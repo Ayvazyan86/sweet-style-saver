@@ -5,7 +5,7 @@ export const translations = {
     becomePartner: 'Стать партнёром',
     wantToOrder: 'Хочу заказать',
     askQuestion: 'Задать вопрос',
-    myApplications: 'Мои заявки',
+    
     
     // Form labels
     name: 'Имя',
@@ -71,7 +71,7 @@ export const translations = {
     becomePartner: 'Become a Partner',
     wantToOrder: 'Want to Order',
     askQuestion: 'Ask a Question',
-    myApplications: 'My Applications',
+    
     
     // Form labels
     name: 'Name',
