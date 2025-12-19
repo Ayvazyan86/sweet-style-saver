@@ -6,6 +6,7 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
+const TELEGRAM_DISCUSSION_CHAT_ID = Deno.env.get('TELEGRAM_DISCUSSION_CHAT_ID')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -25,7 +26,7 @@ interface OrderPayload {
   }
 }
 
-async function sendTelegramMessage(chatId: number, text: string) {
+async function sendTelegramComment(chatId: string, replyToMessageId: number, text: string) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
   
   const response = await fetch(url, {
@@ -37,6 +38,7 @@ async function sendTelegramMessage(chatId: number, text: string) {
       chat_id: chatId,
       text: text,
       parse_mode: 'HTML',
+      reply_to_message_id: replyToMessageId,
     }),
   })
 
@@ -57,6 +59,10 @@ Deno.serve(async (req) => {
   try {
     if (!TELEGRAM_BOT_TOKEN) {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
+    }
+
+    if (!TELEGRAM_DISCUSSION_CHAT_ID) {
+      throw new Error('TELEGRAM_DISCUSSION_CHAT_ID is not configured')
     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -113,29 +119,21 @@ Deno.serve(async (req) => {
     const partnerIds = [...new Set(partnerCategories.map(pc => pc.profile_id))]
     console.log('Found partners:', partnerIds.length)
 
-    // Получаем активных партнёров с их telegram_id
+    // Получаем активных партнёров с discussion_message_id
     const { data: partners } = await supabase
       .from('partner_profiles')
-      .select('id, user_id, name')
+      .select('id, name, discussion_message_id')
       .in('id', partnerIds)
       .eq('status', 'active')
+      .not('discussion_message_id', 'is', null)
 
     if (!partners || partners.length === 0) {
-      console.log('No active partners found')
+      console.log('No active partners with discussion_message_id found')
       return new Response(
-        JSON.stringify({ message: 'No active partners' }),
+        JSON.stringify({ message: 'No active partners with discussion posts' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Получаем telegram_id для каждого партнёра
-    const userIds = partners.map(p => p.user_id)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, telegram_id')
-      .in('id', userIds)
-
-    const telegramIdMap = new Map(profiles?.map(p => [p.id, p.telegram_id]) || [])
 
     // Формируем сообщение
     const message = `
@@ -151,15 +149,18 @@ ${record.budget ? `💰 <b>Бюджет:</b> ${record.budget} ₽` : ''}
 ${record.contact ? `📞 <b>Контакт:</b> ${record.contact}` : ''}
     `.trim()
 
-    // Отправляем каждому партнёру
+    // Отправляем в комментарии каждого партнёра
     let sentCount = 0
     for (const partner of partners) {
-      const telegramId = telegramIdMap.get(partner.user_id)
-      if (telegramId) {
-        const success = await sendTelegramMessage(telegramId, message)
+      if (partner.discussion_message_id) {
+        const success = await sendTelegramComment(
+          TELEGRAM_DISCUSSION_CHAT_ID,
+          partner.discussion_message_id,
+          message
+        )
         if (success) {
           sentCount++
-          console.log(`Sent to partner ${partner.name} (${telegramId})`)
+          console.log(`Sent to partner ${partner.name} comments (message_id: ${partner.discussion_message_id})`)
         }
       }
     }
