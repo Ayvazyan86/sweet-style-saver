@@ -34,7 +34,7 @@ export default function QuestionForm() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    if (selectedCategory.length === 0) newErrors.category = t('selectCategory');
+    if (selectedCategory.length === 0) newErrors.category = t('selectCategories');
     if (!formData.text.trim()) newErrors.text = t('required');
     
     setErrors(newErrors);
@@ -81,17 +81,33 @@ export default function QuestionForm() {
         profileId = newProfile.id;
       }
 
-      // Создаём вопрос
-      const { error: questionError } = await supabase
+      // Создаём вопрос (используем первую категорию как основную)
+      const { data: question, error: questionError } = await supabase
         .from('questions')
         .insert({
           user_id: profileId,
           category_id: selectedCategory[0],
           text: formData.text,
           details: formData.details || null,
-        });
+        })
+        .select('id')
+        .single();
 
       if (questionError) throw questionError;
+
+      // Добавляем все выбранные категории в связующую таблицу
+      if (selectedCategory.length > 0) {
+        const categoryInserts = selectedCategory.map(categoryId => ({
+          question_id: question.id,
+          category_id: categoryId,
+        }));
+
+        const { error: catError } = await supabase
+          .from('question_categories')
+          .insert(categoryInserts);
+
+        if (catError) throw catError;
+      }
 
       hapticFeedback('success');
       toast.success(t('applicationSent'), {
@@ -139,7 +155,7 @@ export default function QuestionForm() {
             <CategorySelect
               selectedIds={selectedCategory}
               onChange={setSelectedCategory}
-              multiple={false}
+              multiple={true}
               error={errors.category}
             />
 
