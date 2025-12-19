@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
@@ -6,7 +6,7 @@ import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
-import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,11 @@ export default function PartnerForm() {
   const [loading, setLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Состояние для проверки Telegram канала
+  const [tgChecking, setTgChecking] = useState(false);
+  const [tgVerified, setTgVerified] = useState<boolean | null>(null);
+  const [tgChannelInfo, setTgChannelInfo] = useState<{ title: string; type: string } | null>(null);
   
   const [formData, setFormData] = useState({
     name: user?.first_name || '',
@@ -82,6 +87,61 @@ export default function PartnerForm() {
     const formatted = formatPhone(e.target.value);
     updateField('phone', formatted);
   };
+
+  // Проверка Telegram канала через API
+  const checkTelegramChannel = useCallback(async (channel: string) => {
+    if (!channel || !isValidTelegram(channel)) {
+      setTgVerified(null);
+      setTgChannelInfo(null);
+      return;
+    }
+
+    setTgChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-telegram-channel', {
+        body: { channel }
+      });
+
+      if (error) {
+        console.error('Error checking Telegram channel:', error);
+        setTgVerified(null);
+        setTgChannelInfo(null);
+        return;
+      }
+
+      if (data.exists) {
+        setTgVerified(true);
+        setTgChannelInfo({ title: data.channel.title, type: data.channel.type });
+        // Убираем ошибку если канал найден
+        if (errors.tg_channel) {
+          setErrors(prev => ({ ...prev, tg_channel: '' }));
+        }
+      } else {
+        setTgVerified(false);
+        setTgChannelInfo(null);
+      }
+    } catch (err) {
+      console.error('Error checking Telegram channel:', err);
+      setTgVerified(null);
+      setTgChannelInfo(null);
+    } finally {
+      setTgChecking(false);
+    }
+  }, [errors.tg_channel]);
+
+  // Debounced проверка Telegram канала
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.tg_channel && isValidTelegram(formData.tg_channel)) {
+        checkTelegramChannel(formData.tg_channel);
+      } else {
+        setTgVerified(null);
+        setTgChannelInfo(null);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [formData.tg_channel, checkTelegramChannel]);
 
   // Валидаторы
   const isValidPhone = (phone: string) => {
@@ -436,15 +496,31 @@ export default function PartnerForm() {
                   success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
                 />
 
-                <FormInput
-                  label={t('tgChannel')}
-                  value={formData.tg_channel}
-                  onChange={e => updateField('tg_channel', e.target.value)}
-                  placeholder="@username или https://t.me/..."
-                  hint="Можно указать @username или полную ссылку"
-                  error={errors.tg_channel}
-                  success={!!formData.tg_channel && isValidTelegram(formData.tg_channel)}
-                />
+                <div className="space-y-2">
+                  <FormInput
+                    label={t('tgChannel')}
+                    value={formData.tg_channel}
+                    onChange={e => updateField('tg_channel', e.target.value)}
+                    placeholder="@username или https://t.me/..."
+                    hint={
+                      tgChecking 
+                        ? "Проверяем канал..." 
+                        : tgVerified && tgChannelInfo 
+                          ? `✓ ${tgChannelInfo.title} (${tgChannelInfo.type === 'channel' ? 'канал' : tgChannelInfo.type === 'supergroup' ? 'группа' : tgChannelInfo.type})`
+                          : tgVerified === false 
+                            ? "Канал не найден или недоступен" 
+                            : "Можно указать @username или полную ссылку"
+                    }
+                    error={errors.tg_channel}
+                    success={tgVerified === true}
+                  />
+                  {tgChecking && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>Проверяем существование канала...</span>
+                    </div>
+                  )}
+                </div>
 
                 <FormInput
                   label={t('website')}
