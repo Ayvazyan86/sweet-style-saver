@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.notify-partners-new-question]
 verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
