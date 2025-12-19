@@ -664,6 +664,39 @@ export type Database = {
         }
         Relationships: []
       }
+      question_categories: {
+        Row: {
+          category_id: string
+          id: string
+          question_id: string
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          question_id: string
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_categories_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_publications: {
         Row: {
           id: string
