@@ -197,8 +197,7 @@ export default function OrderForm() {
                 label={t('budget')}
                 value={formData.budget}
                 onChange={handleBudgetChange}
-                placeholder="10 000"
-                hint="Только цифры, ₽"
+                placeholder="10 000 ₽"
               />
             </div>
 
