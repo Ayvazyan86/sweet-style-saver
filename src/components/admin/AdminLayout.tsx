@@ -8,12 +8,14 @@ import {
   Loader2,
   Shield,
   Menu,
+  FileText,
   X
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
+  { href: '/admin/applications', label: 'Заявки', icon: FileText },
   { href: '/admin/partners', label: 'Партнёры', icon: Users },
 ];
 

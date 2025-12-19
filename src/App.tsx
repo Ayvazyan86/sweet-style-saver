@@ -11,6 +11,7 @@ import QuestionForm from "./pages/QuestionForm";
 import NotFound from "./pages/NotFound";
 import AdminAuth from "./pages/admin/AdminAuth";
 import AdminLayout from "./components/admin/AdminLayout";
+import AdminApplications from "./pages/admin/AdminApplications";
 import AdminPartners from "./pages/admin/AdminPartners";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             {/* Admin routes */}
             <Route path="/admin/login" element={<AdminAuth />} />
             <Route path="/admin" element={<AdminLayout />}>
+              <Route path="applications" element={<AdminApplications />} />
               <Route path="partners" element={<AdminPartners />} />
             </Route>
             
