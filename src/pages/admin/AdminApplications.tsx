@@ -70,7 +70,7 @@ export default function AdminApplications() {
       if (updateError) throw updateError;
 
       // Create partner profile
-      const { error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('partner_profiles')
         .insert({
           user_id: application.user_id,
@@ -89,9 +89,32 @@ export default function AdminApplications() {
           office_address: application.office_address,
           status: 'active',
           partner_type: 'free'
-        });
+        })
+        .select('id')
+        .single();
       
       if (profileError) throw profileError;
+
+      // Copy categories from application to profile
+      const { data: appCategories } = await supabase
+        .from('partner_application_categories')
+        .select('category_id')
+        .eq('application_id', application.id);
+
+      if (appCategories && appCategories.length > 0) {
+        const profileCategories = appCategories.map(cat => ({
+          profile_id: profile.id,
+          category_id: cat.category_id
+        }));
+
+        const { error: catError } = await supabase
+          .from('partner_profile_categories')
+          .insert(profileCategories);
+
+        if (catError) {
+          console.error('Error copying categories:', catError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
