@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
+import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ export default function PartnerForm() {
     website: '',
     youtube: '',
     office_address: '',
+    photo_url: '',
   });
 
   const updateField = (field: string, value: string) => {
@@ -266,6 +268,7 @@ export default function PartnerForm() {
           website: formData.website || null,
           youtube: formData.youtube || null,
           office_address: formData.office_address || null,
+          photo_url: formData.photo_url || null,
         })
         .select('id')
         .single();
@@ -379,6 +382,11 @@ export default function PartnerForm() {
               </div>
 
               <div className="space-y-4">
+                <PhotoUpload
+                  value={formData.photo_url || undefined}
+                  onChange={(url) => updateField('photo_url', url || '')}
+                />
+
                 <FormInput
                   label={t('name')}
                   required
