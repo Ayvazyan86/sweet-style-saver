@@ -35,7 +35,7 @@ const MenuItem = ({ icon, title, description, gradient, onClick }: MenuItemProps
 
 export const MainMenu = () => {
   const { t } = useLanguage();
-  const { user, hapticFeedback } = useTelegram();
+  const { user, hapticFeedback, isTestMode } = useTelegram();
   const navigate = useNavigate();
 
   const handleNavigate = (path: string) => {
@@ -87,6 +87,11 @@ export const MainMenu = () => {
       {/* Footer */}
       <div className="text-center mt-8 text-sm text-muted-foreground">
         <p>@av_rekomenduet_bot</p>
+        {isTestMode && (
+          <p className="mt-2 text-xs text-amber-500/80 bg-amber-500/10 rounded-lg py-2 px-4 inline-block">
+            🧪 Режим тестирования (без Telegram)
+          </p>
+        )}
       </div>
     </div>
   );

@@ -74,31 +74,52 @@ declare global {
   }
 }
 
+// Генерируем стабильный тестовый ID на основе localStorage
+const getTestTelegramId = (): number => {
+  const storageKey = 'test_telegram_id';
+  let storedId = localStorage.getItem(storageKey);
+  
+  if (!storedId) {
+    // Генерируем случайный ID в диапазоне реальных Telegram ID
+    storedId = String(Math.floor(100000000 + Math.random() * 900000000));
+    localStorage.setItem(storageKey, storedId);
+  }
+  
+  return parseInt(storedId, 10);
+};
+
 export const useTelegram = () => {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
   const [user, setUser] = useState<TelegramUser | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     
-    if (tg) {
+    if (tg && tg.initDataUnsafe?.user) {
       tg.ready();
       tg.expand();
       setWebApp(tg);
-      setUser(tg.initDataUnsafe?.user || null);
+      setUser(tg.initDataUnsafe.user);
       setIsReady(true);
+      setIsTestMode(false);
     } else {
-      // Для разработки без Telegram
+      // Режим тестирования без Telegram
       setIsReady(true);
-      // Mock user для тестирования
+      setIsTestMode(true);
+      
+      // Стабильный mock user для тестирования
+      const testId = getTestTelegramId();
       setUser({
-        id: 123456789,
-        first_name: 'Test',
-        last_name: 'User',
-        username: 'testuser',
+        id: testId,
+        first_name: 'Тестовый',
+        last_name: 'Пользователь',
+        username: 'test_user_' + testId.toString().slice(-4),
         language_code: 'ru'
       });
+      
+      console.log('🧪 Режим тестирования активен. Telegram ID:', testId);
     }
   }, []);
 
@@ -116,6 +137,7 @@ export const useTelegram = () => {
     webApp,
     user,
     isReady,
+    isTestMode,
     initData: webApp?.initData || '',
     hapticFeedback,
     colorScheme: webApp?.colorScheme || 'dark',
