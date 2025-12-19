@@ -43,21 +43,27 @@ export const FormInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, Form
         
         <div className="relative">
           {isTextarea(props) ? (
-            <textarea
-              ref={ref as React.Ref<HTMLTextAreaElement>}
-              className={cn(baseClasses, 'min-h-[120px] resize-none')}
-              {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
-            />
+            <>
+              <textarea
+                ref={ref as React.Ref<HTMLTextAreaElement>}
+                className={cn(baseClasses, 'min-h-[120px] resize-none', success && 'pr-10')}
+                {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
+              />
+              {success && (
+                <CheckCircle className="absolute right-3 top-3 w-5 h-5 text-emerald-500" />
+              )}
+            </>
           ) : (
-            <input
-              ref={ref as React.Ref<HTMLInputElement>}
-              className={cn(baseClasses, success && 'pr-10')}
-              {...(rest as InputHTMLAttributes<HTMLInputElement>)}
-            />
-          )}
-          
-          {success && !isTextarea(props) && (
-            <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500" />
+            <>
+              <input
+                ref={ref as React.Ref<HTMLInputElement>}
+                className={cn(baseClasses, success && 'pr-10')}
+                {...(rest as InputHTMLAttributes<HTMLInputElement>)}
+              />
+              {success && (
+                <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500" />
+              )}
+            </>
           )}
         </div>
         
