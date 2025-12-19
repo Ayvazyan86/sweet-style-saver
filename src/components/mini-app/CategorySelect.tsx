@@ -156,7 +156,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
       {selectedIds.length === 0 && !error && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5" />
-          Выберите одну или несколько категорий
+          {multiple ? 'Выберите одну или несколько категорий' : 'Выберите категорию'}
         </p>
       )}
 

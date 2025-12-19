@@ -102,7 +102,7 @@ export default function OrderForm() {
         description: t('applicationSentDesc'),
       });
       
-      navigate('/my-applications');
+      navigate('/');
     } catch (error) {
       console.error('Error submitting order:', error);
       hapticFeedback('error');
