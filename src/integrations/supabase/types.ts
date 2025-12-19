@@ -184,6 +184,39 @@ export type Database = {
           },
         ]
       }
+      order_categories: {
+        Row: {
+          category_id: string
+          id: string
+          order_id: string
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          order_id: string
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_categories_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_publications: {
         Row: {
           id: string
