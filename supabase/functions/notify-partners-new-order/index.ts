@@ -82,7 +82,10 @@ Deno.serve(async (req) => {
       .select('category_id')
       .eq('order_id', record.id)
 
-    const categoryIds = orderCategories?.map(c => c.category_id) || [record.category_id]
+    // Используем категории из order_categories или основную категорию заказа
+    const categoryIds = orderCategories && orderCategories.length > 0
+      ? orderCategories.map(c => c.category_id) 
+      : [record.category_id]
     console.log('Order categories:', categoryIds)
 
     // Получаем название категории

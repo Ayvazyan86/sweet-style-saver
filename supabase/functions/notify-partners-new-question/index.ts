@@ -79,7 +79,10 @@ Deno.serve(async (req) => {
       .select('category_id')
       .eq('question_id', record.id)
 
-    const categoryIds = questionCategories?.map(c => c.category_id) || [record.category_id]
+    // Используем категории из question_categories или основную категорию вопроса
+    const categoryIds = questionCategories && questionCategories.length > 0
+      ? questionCategories.map(c => c.category_id) 
+      : [record.category_id]
     console.log('Question categories:', categoryIds)
 
     // Получаем название категории
