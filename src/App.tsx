@@ -11,6 +11,7 @@ import QuestionForm from "./pages/QuestionForm";
 import NotFound from "./pages/NotFound";
 import AdminAuth from "./pages/admin/AdminAuth";
 import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplications from "./pages/admin/AdminApplications";
 import AdminPartners from "./pages/admin/AdminPartners";
 
@@ -32,6 +33,8 @@ const App = () => (
             {/* Admin routes */}
             <Route path="/admin/login" element={<AdminAuth />} />
             <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="applications" element={<AdminApplications />} />
               <Route path="partners" element={<AdminPartners />} />
             </Route>
