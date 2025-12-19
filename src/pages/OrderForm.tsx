@@ -20,6 +20,7 @@ export default function OrderForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const [formData, setFormData] = useState({
+    title: '',
     text: '',
     city: '',
     budget: '',
@@ -50,6 +51,7 @@ export default function OrderForm() {
     const newErrors: Record<string, string> = {};
     
     if (selectedCategory.length === 0) newErrors.category = t('selectCategories');
+    if (!formData.title.trim()) newErrors.title = t('required');
     if (!formData.text.trim()) newErrors.text = t('required');
     
     setErrors(newErrors);
@@ -102,6 +104,7 @@ export default function OrderForm() {
         .insert({
           user_id: profileId,
           category_id: selectedCategory[0],
+          title: formData.title,
           text: formData.text,
           city: formData.city || null,
           budget: formData.budget || null,
@@ -177,12 +180,21 @@ export default function OrderForm() {
             />
 
             <FormInput
-              label={t('orderText')}
+              label="Заголовок заказа"
+              required
+              value={formData.title}
+              onChange={e => updateField('title', e.target.value)}
+              placeholder="Кратко опишите задачу"
+              error={errors.title}
+            />
+
+            <FormInput
+              label="Описание заказа"
               required
               multiline
               value={formData.text}
               onChange={e => updateField('text', e.target.value)}
-              placeholder={t('enterOrderText')}
+              placeholder="Подробно опишите, что вам нужно..."
               error={errors.text}
             />
 
