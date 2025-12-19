@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Get the secret from environment variable
+const CREATE_ADMIN_SECRET = Deno.env.get('CREATE_ADMIN_SECRET')
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,8 +17,18 @@ Deno.serve(async (req) => {
   try {
     const { email, password, secret_key } = await req.json()
 
-    // Simple secret key protection - change this to your own secret
-    if (secret_key !== 'create-admin-secret-2024') {
+    // Validate that the secret is configured
+    if (!CREATE_ADMIN_SECRET) {
+      console.error('CREATE_ADMIN_SECRET is not configured')
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Secure secret key protection using environment variable
+    if (secret_key !== CREATE_ADMIN_SECRET) {
+      console.warn('Invalid admin creation attempt with wrong secret key')
       return new Response(
         JSON.stringify({ error: 'Invalid secret key' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
