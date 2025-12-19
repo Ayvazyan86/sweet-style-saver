@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.notify-application-result]
 verify_jwt = false
+
+[functions.notify-partners-new-order]
+verify_jwt = false
+
+[functions.notify-partners-new-question]
+verify_jwt = false
