@@ -10,15 +10,19 @@ import {
   Menu,
   FileText,
   X,
-  BarChart3
+  BarChart3,
+  ShoppingCart,
+  HelpCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Статистика', icon: BarChart3 },
-  { href: '/admin/applications', label: 'Заявки', icon: FileText },
+  { href: '/admin/applications', label: 'Заявки партнёров', icon: FileText },
   { href: '/admin/partners', label: 'Партнёры', icon: Users },
+  { href: '/admin/orders', label: 'Заказы', icon: ShoppingCart },
+  { href: '/admin/questions', label: 'Вопросы', icon: HelpCircle },
 ];
 
 export default function AdminLayout() {
