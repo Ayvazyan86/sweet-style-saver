@@ -2,3 +2,6 @@ project_id = "zuxikzoyzuiyldbtlsdm"
 
 [functions.check-telegram-channel]
 verify_jwt = false
+
+[functions.create-admin]
+verify_jwt = false
