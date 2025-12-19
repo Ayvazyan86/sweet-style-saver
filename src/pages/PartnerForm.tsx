@@ -49,6 +49,28 @@ export default function PartnerForm() {
     }
   };
 
+  // Валидаторы
+  const isValidPhone = (phone: string) => {
+    if (!phone) return true; // Опциональное поле
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    return /^(\+7|8)?[0-9]{10}$/.test(cleaned);
+  };
+
+  const isValidUrl = (url: string) => {
+    if (!url) return true; // Опциональное поле
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return /^[a-zA-Z0-9][a-zA-Z0-9-]*\.[a-zA-Z]{2,}/.test(url);
+    }
+  };
+
+  const isValidTelegram = (tg: string) => {
+    if (!tg) return true; // Опциональное поле
+    return /^@[a-zA-Z0-9_]{5,}$/.test(tg) || /^https?:\/\/(t\.me|telegram\.me)\//.test(tg);
+  };
+
   const validateStep = (step: number) => {
     const newErrors: Record<string, string> = {};
     
@@ -59,6 +81,21 @@ export default function PartnerForm() {
       }
       if (!formData.profession.trim()) newErrors.profession = t('required');
       if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
+    }
+
+    if (step === 3) {
+      if (formData.phone && !isValidPhone(formData.phone)) {
+        newErrors.phone = 'Неверный формат телефона';
+      }
+      if (formData.tg_channel && !isValidTelegram(formData.tg_channel)) {
+        newErrors.tg_channel = 'Введите @username или ссылку t.me/...';
+      }
+      if (formData.website && !isValidUrl(formData.website)) {
+        newErrors.website = 'Неверный формат URL';
+      }
+      if (formData.youtube && !isValidUrl(formData.youtube)) {
+        newErrors.youtube = 'Неверный формат URL';
+      }
     }
     
     setErrors(newErrors);
@@ -359,6 +396,9 @@ export default function PartnerForm() {
                   value={formData.phone}
                   onChange={e => updateField('phone', e.target.value)}
                   placeholder="+7 (999) 123-45-67"
+                  hint="Формат: +7 или 8, далее 10 цифр"
+                  error={errors.phone}
+                  success={!!formData.phone && isValidPhone(formData.phone)}
                 />
 
                 <FormInput
@@ -366,6 +406,9 @@ export default function PartnerForm() {
                   value={formData.tg_channel}
                   onChange={e => updateField('tg_channel', e.target.value)}
                   placeholder="@username или https://t.me/..."
+                  hint="Можно указать @username или полную ссылку"
+                  error={errors.tg_channel}
+                  success={!!formData.tg_channel && isValidTelegram(formData.tg_channel)}
                 />
 
                 <FormInput
@@ -374,20 +417,27 @@ export default function PartnerForm() {
                   value={formData.website}
                   onChange={e => updateField('website', e.target.value)}
                   placeholder="https://example.com"
+                  hint="Укажите полный адрес сайта с https://"
+                  error={errors.website}
+                  success={!!formData.website && isValidUrl(formData.website)}
                 />
 
                 <FormInput
                   label={t('youtube')}
                   value={formData.youtube}
                   onChange={e => updateField('youtube', e.target.value)}
-                  placeholder="Ссылка на YouTube/Rutube/Дзен"
+                  placeholder="https://youtube.com/@channel"
+                  hint="YouTube, Rutube, VK Video, Яндекс Дзен или VC.ru"
+                  error={errors.youtube}
+                  success={!!formData.youtube && isValidUrl(formData.youtube)}
                 />
 
                 <FormInput
                   label={t('officeAddress')}
                   value={formData.office_address}
                   onChange={e => updateField('office_address', e.target.value)}
-                  placeholder="Адрес офиса (если есть)"
+                  placeholder="Город, улица, дом, офис"
+                  hint="Укажите, если принимаете клиентов в офисе"
                 />
               </div>
             </GlassCard>
