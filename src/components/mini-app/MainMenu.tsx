@@ -1,7 +1,7 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
 import { GlassCard } from './GlassCard';
-import { UserPlus, ShoppingCart, HelpCircle, FileText, ChevronRight } from 'lucide-react';
+import { UserPlus, ShoppingCart, HelpCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface MenuItemProps {
@@ -82,13 +82,6 @@ export const MainMenu = () => {
           onClick={() => handleNavigate('/question-form')}
         />
         
-        <MenuItem
-          icon={<FileText className="w-7 h-7 text-white" />}
-          title={t('myApplications')}
-          description="Просмотр статусов ваших заявок"
-          gradient="bg-gradient-to-br from-purple-500 to-pink-600"
-          onClick={() => handleNavigate('/my-applications')}
-        />
       </div>
 
       {/* Footer */}

@@ -8,7 +8,6 @@ import Index from "./pages/Index";
 import PartnerForm from "./pages/PartnerForm";
 import OrderForm from "./pages/OrderForm";
 import QuestionForm from "./pages/QuestionForm";
-import MyApplications from "./pages/MyApplications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,7 +24,7 @@ const App = () => (
             <Route path="/partner-form" element={<PartnerForm />} />
             <Route path="/order-form" element={<OrderForm />} />
             <Route path="/question-form" element={<QuestionForm />} />
-            <Route path="/my-applications" element={<MyApplications />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
