@@ -49,11 +49,46 @@ export default function PartnerForm() {
     }
   };
 
+  // Маска для телефона +7 (999) 123-45-67
+  const formatPhone = (value: string) => {
+    // Убираем всё кроме цифр
+    const digits = value.replace(/\D/g, '');
+    
+    // Начинаем с +7
+    let formatted = '+7';
+    
+    // Если пользователь ввёл 8 или 7 в начале, пропускаем
+    const phoneDigits = digits.startsWith('7') || digits.startsWith('8') 
+      ? digits.slice(1) 
+      : digits;
+    
+    if (phoneDigits.length > 0) {
+      formatted += ' (' + phoneDigits.slice(0, 3);
+    }
+    if (phoneDigits.length >= 3) {
+      formatted += ') ' + phoneDigits.slice(3, 6);
+    }
+    if (phoneDigits.length >= 6) {
+      formatted += '-' + phoneDigits.slice(6, 8);
+    }
+    if (phoneDigits.length >= 8) {
+      formatted += '-' + phoneDigits.slice(8, 10);
+    }
+    
+    return formatted;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    updateField('phone', formatted);
+  };
+
   // Валидаторы
   const isValidPhone = (phone: string) => {
     if (!phone) return true; // Опциональное поле
-    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
-    return /^(\+7|8)?[0-9]{10}$/.test(cleaned);
+    const cleaned = phone.replace(/\D/g, '');
+    // Проверяем что есть ровно 11 цифр (7 + 10 цифр номера)
+    return cleaned.length === 11 && cleaned.startsWith('7');
   };
 
   const isValidUrl = (url: string) => {
@@ -394,11 +429,11 @@ export default function PartnerForm() {
                   label={t('phone')}
                   type="tel"
                   value={formData.phone}
-                  onChange={e => updateField('phone', e.target.value)}
-                  placeholder="+7 (999) 123-45-67"
-                  hint="Формат: +7 или 8, далее 10 цифр"
+                  onChange={handlePhoneChange}
+                  placeholder="+7 (___) ___-__-__"
+                  hint="Номер форматируется автоматически"
                   error={errors.phone}
-                  success={!!formData.phone && isValidPhone(formData.phone)}
+                  success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
                 />
 
                 <FormInput
