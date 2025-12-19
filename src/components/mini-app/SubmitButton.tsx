@@ -5,12 +5,14 @@ import { Loader2 } from 'lucide-react';
 interface SubmitButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   loading?: boolean;
+  loadingText?: string;
   variant?: 'primary' | 'secondary' | 'gold';
 }
 
 export const SubmitButton = ({ 
   children, 
   loading, 
+  loadingText = 'Отправка...',
   variant = 'primary',
   className, 
   disabled,
@@ -40,7 +42,7 @@ export const SubmitButton = ({
       {loading ? (
         <span className="flex items-center justify-center gap-2">
           <Loader2 className="w-5 h-5 animate-spin" />
-          Отправка...
+          {loadingText}
         </span>
       ) : (
         children

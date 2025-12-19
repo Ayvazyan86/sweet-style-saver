@@ -291,7 +291,7 @@ export default function PartnerForm() {
         description: t('applicationSentDesc'),
       });
       
-      navigate('/my-applications');
+      navigate('/');
     } catch (error) {
       console.error('Error submitting application:', error);
       hapticFeedback('error');

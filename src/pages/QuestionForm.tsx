@@ -98,7 +98,7 @@ export default function QuestionForm() {
         description: t('applicationSentDesc'),
       });
       
-      navigate('/my-applications');
+      navigate('/');
     } catch (error) {
       console.error('Error submitting question:', error);
       hapticFeedback('error');
