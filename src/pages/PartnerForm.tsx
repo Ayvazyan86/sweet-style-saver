@@ -6,15 +6,23 @@ import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
-import { ArrowLeft, UserPlus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const STEPS = [
+  { id: 1, title: 'Личные данные', icon: User },
+  { id: 2, title: 'Деятельность', icon: Briefcase },
+  { id: 3, title: 'Контакты', icon: Phone },
+];
 
 export default function PartnerForm() {
   const { t } = useLanguage();
   const { user, hapticFeedback } = useTelegram();
   const navigate = useNavigate();
   
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,24 +49,40 @@ export default function PartnerForm() {
     }
   };
 
-  const validate = () => {
+  const validateStep = (step: number) => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.name.trim()) newErrors.name = t('required');
-    if (!formData.age || parseInt(formData.age) < 16 || parseInt(formData.age) > 100) {
-      newErrors.age = 'Введите корректный возраст (16-100)';
+    if (step === 1) {
+      if (!formData.name.trim()) newErrors.name = t('required');
+      if (!formData.age || parseInt(formData.age) < 16 || parseInt(formData.age) > 100) {
+        newErrors.age = 'Введите корректный возраст (16-100)';
+      }
+      if (!formData.profession.trim()) newErrors.profession = t('required');
+      if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
     }
-    if (!formData.profession.trim()) newErrors.profession = t('required');
-    if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      hapticFeedback('light');
+      setCurrentStep(prev => Math.min(prev + 1, 3));
+    } else {
+      hapticFeedback('error');
+    }
+  };
+
+  const prevStep = () => {
+    hapticFeedback('light');
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validate()) {
+    if (!validateStep(currentStep)) {
       hapticFeedback('error');
       return;
     }
@@ -67,7 +91,6 @@ export default function PartnerForm() {
     hapticFeedback('light');
 
     try {
-      // Сначала создаём/находим профиль пользователя
       let profileId: string;
       
       const { data: existingProfile } = await supabase
@@ -95,7 +118,6 @@ export default function PartnerForm() {
         profileId = newProfile.id;
       }
 
-      // Создаём заявку партнёра
       const { data: application, error: appError } = await supabase
         .from('partner_applications')
         .insert({
@@ -118,7 +140,6 @@ export default function PartnerForm() {
 
       if (appError) throw appError;
 
-      // Добавляем категории
       const categoryInserts = selectedCategories.map(categoryId => ({
         application_id: application.id,
         category_id: categoryId,
@@ -152,158 +173,254 @@ export default function PartnerForm() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => currentStep > 1 ? prevStep() : navigate('/')}
           className="w-10 h-10 rounded-xl bg-card/50 flex items-center justify-center border border-white/10 hover:border-primary/50 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
         <div>
           <h1 className="text-xl font-bold text-foreground">{t('becomePartner')}</h1>
-          <p className="text-sm text-muted-foreground">Заполните анкету</p>
+          <p className="text-sm text-muted-foreground">Шаг {currentStep} из 3</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
-        {/* Основная информация */}
-        <GlassCard>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-              <UserPlus className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">Основная информация</h2>
-          </div>
-
-          <div className="space-y-4">
-            <FormInput
-              label={t('name')}
-              required
-              value={formData.name}
-              onChange={e => updateField('name', e.target.value)}
-              placeholder={t('enterName')}
-              error={errors.name}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label={t('age')}
-                required
-                type="number"
-                min={16}
-                max={100}
-                value={formData.age}
-                onChange={e => updateField('age', e.target.value)}
-                placeholder="25"
-                error={errors.age}
-              />
-              <FormInput
-                label={t('city')}
-                value={formData.city}
-                onChange={e => updateField('city', e.target.value)}
-                placeholder={t('enterCity')}
-              />
-            </div>
-
-            <FormInput
-              label={t('profession')}
-              required
-              value={formData.profession}
-              onChange={e => updateField('profession', e.target.value)}
-              placeholder={t('enterProfession')}
-              error={errors.profession}
-            />
-
-            <CategorySelect
-              selectedIds={selectedCategories}
-              onChange={setSelectedCategories}
-              multiple
-              error={errors.categories}
+      {/* Progress Steps */}
+      <div className="max-w-md mx-auto mb-8">
+        <div className="flex items-center justify-between relative">
+          {/* Progress Line */}
+          <div className="absolute left-0 right-0 top-5 h-0.5 bg-card">
+            <div 
+              className="h-full bg-gradient-primary transition-all duration-500"
+              style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
             />
           </div>
-        </GlassCard>
-
-        {/* Агентство */}
-        <GlassCard>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Об агентстве (опционально)</h2>
           
-          <div className="space-y-4">
-            <FormInput
-              label={t('agencyName')}
-              value={formData.agency_name}
-              onChange={e => updateField('agency_name', e.target.value)}
-              placeholder="Название вашего агентства"
-            />
+          {STEPS.map((step) => {
+            const Icon = step.icon;
+            const isCompleted = currentStep > step.id;
+            const isCurrent = currentStep === step.id;
+            
+            return (
+              <div key={step.id} className="relative z-10 flex flex-col items-center">
+                <div
+                  className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300',
+                    isCompleted && 'bg-gradient-primary shadow-glow-primary',
+                    isCurrent && 'bg-primary/20 border-2 border-primary',
+                    !isCompleted && !isCurrent && 'bg-card border border-white/10'
+                  )}
+                >
+                  {isCompleted ? (
+                    <Check className="w-5 h-5 text-primary-foreground" />
+                  ) : (
+                    <Icon className={cn(
+                      'w-5 h-5',
+                      isCurrent ? 'text-primary' : 'text-muted-foreground'
+                    )} />
+                  )}
+                </div>
+                <span className={cn(
+                  'text-xs mt-2 font-medium',
+                  isCurrent ? 'text-primary' : 'text-muted-foreground'
+                )}>
+                  {step.title}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-            <FormInput
-              label={t('agencyDescription')}
-              multiline
-              value={formData.agency_description}
-              onChange={e => updateField('agency_description', e.target.value)}
-              placeholder={t('enterDescription')}
-            />
+      <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+        {/* Step 1: Личные данные */}
+        {currentStep === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Личные данные</h2>
+                  <p className="text-sm text-muted-foreground">Расскажите о себе</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <FormInput
+                  label={t('name')}
+                  required
+                  value={formData.name}
+                  onChange={e => updateField('name', e.target.value)}
+                  placeholder={t('enterName')}
+                  error={errors.name}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormInput
+                    label={t('age')}
+                    required
+                    type="number"
+                    min={16}
+                    max={100}
+                    value={formData.age}
+                    onChange={e => updateField('age', e.target.value)}
+                    placeholder="25"
+                    error={errors.age}
+                  />
+                  <FormInput
+                    label={t('city')}
+                    value={formData.city}
+                    onChange={e => updateField('city', e.target.value)}
+                    placeholder={t('enterCity')}
+                  />
+                </div>
+
+                <FormInput
+                  label={t('profession')}
+                  required
+                  value={formData.profession}
+                  onChange={e => updateField('profession', e.target.value)}
+                  placeholder={t('enterProfession')}
+                  error={errors.profession}
+                />
+
+                <CategorySelect
+                  selectedIds={selectedCategories}
+                  onChange={setSelectedCategories}
+                  multiple
+                  error={errors.categories}
+                />
+              </div>
+            </GlassCard>
           </div>
-        </GlassCard>
+        )}
 
-        {/* О себе */}
-        <GlassCard>
-          <h2 className="text-lg font-semibold text-foreground mb-4">О себе</h2>
-          
-          <FormInput
-            label={t('selfDescription')}
-            multiline
-            value={formData.self_description}
-            onChange={e => updateField('self_description', e.target.value)}
-            placeholder="Расскажите о себе и своём опыте..."
-          />
-        </GlassCard>
+        {/* Step 2: Деятельность */}
+        {currentStep === 2 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center">
+                  <Briefcase className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">О деятельности</h2>
+                  <p className="text-sm text-muted-foreground">Опишите ваш опыт</p>
+                </div>
+              </div>
 
-        {/* Контакты */}
-        <GlassCard>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Контакты</h2>
-          
-          <div className="space-y-4">
-            <FormInput
-              label={t('phone')}
-              type="tel"
-              value={formData.phone}
-              onChange={e => updateField('phone', e.target.value)}
-              placeholder={t('enterPhone')}
-            />
+              <div className="space-y-4">
+                <FormInput
+                  label={t('agencyName')}
+                  value={formData.agency_name}
+                  onChange={e => updateField('agency_name', e.target.value)}
+                  placeholder="Название вашего агентства"
+                />
 
-            <FormInput
-              label={t('tgChannel')}
-              value={formData.tg_channel}
-              onChange={e => updateField('tg_channel', e.target.value)}
-              placeholder="@username или ссылка"
-            />
+                <FormInput
+                  label={t('agencyDescription')}
+                  multiline
+                  value={formData.agency_description}
+                  onChange={e => updateField('agency_description', e.target.value)}
+                  placeholder="Чем занимается ваше агентство..."
+                />
 
-            <FormInput
-              label={t('website')}
-              type="url"
-              value={formData.website}
-              onChange={e => updateField('website', e.target.value)}
-              placeholder={t('enterWebsite')}
-            />
-
-            <FormInput
-              label={t('youtube')}
-              value={formData.youtube}
-              onChange={e => updateField('youtube', e.target.value)}
-              placeholder="Ссылка на канал"
-            />
-
-            <FormInput
-              label={t('officeAddress')}
-              value={formData.office_address}
-              onChange={e => updateField('office_address', e.target.value)}
-              placeholder="Адрес офиса"
-            />
+                <FormInput
+                  label={t('selfDescription')}
+                  multiline
+                  value={formData.self_description}
+                  onChange={e => updateField('self_description', e.target.value)}
+                  placeholder="Расскажите о себе и своём опыте..."
+                />
+              </div>
+            </GlassCard>
           </div>
-        </GlassCard>
+        )}
 
-        {/* Submit */}
-        <SubmitButton loading={loading}>
-          {t('submit')}
-        </SubmitButton>
+        {/* Step 3: Контакты */}
+        {currentStep === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                  <Phone className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Контактные данные</h2>
+                  <p className="text-sm text-muted-foreground">Как с вами связаться</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <FormInput
+                  label={t('phone')}
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => updateField('phone', e.target.value)}
+                  placeholder="+7 (999) 123-45-67"
+                />
+
+                <FormInput
+                  label={t('tgChannel')}
+                  value={formData.tg_channel}
+                  onChange={e => updateField('tg_channel', e.target.value)}
+                  placeholder="@username или https://t.me/..."
+                />
+
+                <FormInput
+                  label={t('website')}
+                  type="url"
+                  value={formData.website}
+                  onChange={e => updateField('website', e.target.value)}
+                  placeholder="https://example.com"
+                />
+
+                <FormInput
+                  label={t('youtube')}
+                  value={formData.youtube}
+                  onChange={e => updateField('youtube', e.target.value)}
+                  placeholder="Ссылка на YouTube/Rutube/Дзен"
+                />
+
+                <FormInput
+                  label={t('officeAddress')}
+                  value={formData.office_address}
+                  onChange={e => updateField('office_address', e.target.value)}
+                  placeholder="Адрес офиса (если есть)"
+                />
+              </div>
+            </GlassCard>
+          </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="mt-6 flex gap-3">
+          {currentStep > 1 && (
+            <button
+              type="button"
+              onClick={prevStep}
+              className="flex-1 py-4 px-6 rounded-xl bg-card/50 border border-white/10 text-foreground font-medium hover:border-primary/50 transition-colors"
+            >
+              Назад
+            </button>
+          )}
+          
+          {currentStep < 3 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="flex-1 py-4 px-6 rounded-xl bg-gradient-primary text-white font-semibold shadow-glow-primary hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              Далее
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          ) : (
+            <SubmitButton loading={loading} className="flex-1">
+              {t('submit')}
+            </SubmitButton>
+          )}
+        </div>
       </form>
     </div>
   );
