@@ -1,6 +1,7 @@
-import { forwardRef, InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { forwardRef, InputHTMLAttributes, TextareaHTMLAttributes, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { X, Info, CheckCircle } from 'lucide-react';
+import { useSuccessSound } from '@/hooks/useSuccessSound';
 
 interface BaseInputProps {
   label: string;
@@ -8,6 +9,7 @@ interface BaseInputProps {
   required?: boolean;
   hint?: string;
   success?: boolean;
+  enableSound?: boolean;
 }
 
 type InputProps = BaseInputProps & InputHTMLAttributes<HTMLInputElement>;
@@ -21,7 +23,17 @@ const isTextarea = (props: FormInputProps): props is TextareaProps => {
 
 export const FormInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, FormInputProps>(
   (props, ref) => {
-    const { label, error, required, hint, success, className, ...rest } = props;
+    const { label, error, required, hint, success, enableSound = true, className, ...rest } = props;
+    const { playSuccessSound } = useSuccessSound();
+    const prevSuccessRef = useRef(success);
+
+    // Play sound when success changes from false to true
+    useEffect(() => {
+      if (enableSound && success && !prevSuccessRef.current) {
+        playSuccessSound();
+      }
+      prevSuccessRef.current = success;
+    }, [success, enableSound, playSuccessSound]);
 
     const baseClasses = cn(
       'w-full px-4 py-3 rounded-xl',
