@@ -36,7 +36,7 @@ export default function OrderForm() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    if (selectedCategory.length === 0) newErrors.category = t('selectCategory');
+    if (selectedCategory.length === 0) newErrors.category = t('selectCategories');
     if (!formData.text.trim()) newErrors.text = t('required');
     
     setErrors(newErrors);
@@ -83,8 +83,8 @@ export default function OrderForm() {
         profileId = newProfile.id;
       }
 
-      // Создаём заказ
-      const { error: orderError } = await supabase
+      // Создаём заказ (используем первую категорию как основную)
+      const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: profileId,
@@ -93,9 +93,25 @@ export default function OrderForm() {
           city: formData.city || null,
           budget: formData.budget || null,
           contact: formData.contact || null,
-        });
+        })
+        .select('id')
+        .single();
 
       if (orderError) throw orderError;
+
+      // Добавляем все выбранные категории в связующую таблицу
+      if (selectedCategory.length > 0) {
+        const categoryInserts = selectedCategory.map(categoryId => ({
+          order_id: order.id,
+          category_id: categoryId,
+        }));
+
+        const { error: catError } = await supabase
+          .from('order_categories')
+          .insert(categoryInserts);
+
+        if (catError) throw catError;
+      }
 
       hapticFeedback('success');
       toast.success(t('applicationSent'), {
@@ -143,7 +159,7 @@ export default function OrderForm() {
             <CategorySelect
               selectedIds={selectedCategory}
               onChange={setSelectedCategory}
-              multiple={false}
+              multiple={true}
               error={errors.category}
             />
 
