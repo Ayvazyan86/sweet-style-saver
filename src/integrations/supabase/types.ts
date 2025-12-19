@@ -184,6 +184,47 @@ export type Database = {
           },
         ]
       }
+      notification_errors: {
+        Row: {
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          error_message: string | null
+          error_type: string
+          id: string
+          partner_profile_id: string | null
+          resolved: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          error_message?: string | null
+          error_type: string
+          id?: string
+          partner_profile_id?: string | null
+          resolved?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          error_message?: string | null
+          error_type?: string
+          id?: string
+          partner_profile_id?: string | null
+          resolved?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_errors_partner_profile_id_fkey"
+            columns: ["partner_profile_id"]
+            isOneToOne: false
+            referencedRelation: "partner_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_categories: {
         Row: {
           category_id: string
