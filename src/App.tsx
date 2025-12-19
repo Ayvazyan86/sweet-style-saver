@@ -9,6 +9,9 @@ import PartnerForm from "./pages/PartnerForm";
 import OrderForm from "./pages/OrderForm";
 import QuestionForm from "./pages/QuestionForm";
 import NotFound from "./pages/NotFound";
+import AdminAuth from "./pages/admin/AdminAuth";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminPartners from "./pages/admin/AdminPartners";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +27,12 @@ const App = () => (
             <Route path="/partner-form" element={<PartnerForm />} />
             <Route path="/order-form" element={<OrderForm />} />
             <Route path="/question-form" element={<QuestionForm />} />
+            
+            {/* Admin routes */}
+            <Route path="/admin/login" element={<AdminAuth />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route path="partners" element={<AdminPartners />} />
+            </Route>
             
             <Route path="*" element={<NotFound />} />
           </Routes>
