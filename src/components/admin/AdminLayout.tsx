@@ -9,12 +9,14 @@ import {
   Shield,
   Menu,
   FileText,
-  X
+  X,
+  BarChart3
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
+  { href: '/admin/dashboard', label: 'Статистика', icon: BarChart3 },
   { href: '/admin/applications', label: 'Заявки', icon: FileText },
   { href: '/admin/partners', label: 'Партнёры', icon: Users },
 ];
