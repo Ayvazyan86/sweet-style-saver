@@ -50,7 +50,7 @@ export const FormInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, Form
                 {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
               />
               {success && (
-                <CheckCircle className="absolute right-3 top-3 w-5 h-5 text-emerald-500" />
+                <CheckCircle className="absolute right-3 top-3 w-5 h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
               )}
             </>
           ) : (
@@ -61,7 +61,7 @@ export const FormInput = forwardRef<HTMLInputElement | HTMLTextAreaElement, Form
                 {...(rest as InputHTMLAttributes<HTMLInputElement>)}
               />
               {success && (
-                <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500" />
+                <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
               )}
             </>
           )}
