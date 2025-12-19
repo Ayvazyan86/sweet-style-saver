@@ -74,18 +74,9 @@ declare global {
   }
 }
 
-// Генерируем стабильный тестовый ID на основе localStorage
+// Фиксированный тестовый ID для разработки
 const getTestTelegramId = (): number => {
-  const storageKey = 'test_telegram_id';
-  let storedId = localStorage.getItem(storageKey);
-  
-  if (!storedId) {
-    // Генерируем случайный ID в диапазоне реальных Telegram ID
-    storedId = String(Math.floor(100000000 + Math.random() * 900000000));
-    localStorage.setItem(storageKey, storedId);
-  }
-  
-  return parseInt(storedId, 10);
+  return 264133466;
 };
 
 export const useTelegram = () => {
