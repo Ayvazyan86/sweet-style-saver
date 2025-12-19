@@ -394,6 +394,7 @@ export default function PartnerForm() {
                   onChange={e => updateField('name', e.target.value)}
                   placeholder={t('enterName')}
                   error={errors.name}
+                  success={formData.name.trim().length >= 2}
                 />
 
                 <div className="grid grid-cols-2 gap-4">
@@ -407,12 +408,14 @@ export default function PartnerForm() {
                     onChange={e => updateField('age', e.target.value)}
                     placeholder="25"
                     error={errors.age}
+                    success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
                   />
                   <FormInput
                     label={t('city')}
                     value={formData.city}
                     onChange={e => updateField('city', e.target.value)}
                     placeholder={t('enterCity')}
+                    success={formData.city.trim().length >= 2}
                   />
                 </div>
 
@@ -423,6 +426,7 @@ export default function PartnerForm() {
                   onChange={e => updateField('profession', e.target.value)}
                   placeholder={t('enterProfession')}
                   error={errors.profession}
+                  success={formData.profession.trim().length >= 2}
                 />
 
                 <CategorySelect
@@ -456,6 +460,7 @@ export default function PartnerForm() {
                   value={formData.agency_name}
                   onChange={e => updateField('agency_name', e.target.value)}
                   placeholder="Название вашего агентства"
+                  success={formData.agency_name.trim().length >= 2}
                 />
 
                 <FormInput
@@ -464,6 +469,7 @@ export default function PartnerForm() {
                   value={formData.agency_description}
                   onChange={e => updateField('agency_description', e.target.value)}
                   placeholder="Чем занимается ваше агентство..."
+                  success={formData.agency_description.trim().length >= 10}
                 />
 
                 <FormInput
@@ -472,6 +478,7 @@ export default function PartnerForm() {
                   value={formData.self_description}
                   onChange={e => updateField('self_description', e.target.value)}
                   placeholder="Расскажите о себе и своём опыте..."
+                  success={formData.self_description.trim().length >= 10}
                 />
               </div>
             </GlassCard>
@@ -557,6 +564,7 @@ export default function PartnerForm() {
                   onChange={e => updateField('office_address', e.target.value)}
                   placeholder="Город, улица, дом, офис"
                   hint="Укажите, если принимаете клиентов в офисе"
+                  success={formData.office_address.trim().length >= 5}
                 />
               </div>
             </GlassCard>
