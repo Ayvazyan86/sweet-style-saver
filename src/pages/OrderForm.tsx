@@ -33,6 +33,19 @@ export default function OrderForm() {
     }
   };
 
+  // Форматирование бюджета - только цифры с разделителями
+  const formatBudget = (value: string) => {
+    // Убираем всё кроме цифр
+    const digits = value.replace(/\D/g, '');
+    // Форматируем с пробелами (10 000)
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  };
+
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatBudget(e.target.value);
+    updateField('budget', formatted);
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
@@ -183,8 +196,9 @@ export default function OrderForm() {
               <FormInput
                 label={t('budget')}
                 value={formData.budget}
-                onChange={e => updateField('budget', e.target.value)}
-                placeholder="от 10 000 ₽"
+                onChange={handleBudgetChange}
+                placeholder="10 000"
+                hint="Только цифры, ₽"
               />
             </div>
 
