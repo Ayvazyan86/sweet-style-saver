@@ -15,6 +15,10 @@ interface PartnerProfile {
   tg_channel: string | null;
   website: string | null;
   youtube: string | null;
+  rutube: string | null;
+  dzen: string | null;
+  vk_video: string | null;
+  tg_video: string | null;
   office_address: string | null;
   partner_type: 'star' | 'paid' | 'free' | null;
   status: 'active' | 'inactive' | 'archived' | null;

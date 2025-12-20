@@ -9,10 +9,12 @@ import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
-import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2 } from 'lucide-react';
+import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
+import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 
 const STEPS = [
   { id: 1, title: 'Личные данные', icon: User },
@@ -29,6 +31,18 @@ export default function PartnerForm() {
   const [loading, setLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Загружаем категории для предпросмотра
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('is_active', true);
+      return data || [];
+    },
+  });
   
   // Состояние для проверки Telegram канала
   const [tgChecking, setTgChecking] = useState(false);
@@ -650,6 +664,23 @@ export default function PartnerForm() {
                 />
               </div>
             </GlassCard>
+          </div>
+        )}
+
+        {/* Preview Card - only on step 3 */}
+        {currentStep === 3 && (
+          <div className="mt-6 animate-in fade-in duration-300">
+            <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+              <Eye className="w-4 h-4" />
+              <span className="text-sm font-medium">Так будет выглядеть ваша карточка</span>
+            </div>
+            <PartnerPreviewCard 
+              data={formData}
+              categories={selectedCategories.map(id => {
+                const cat = categoriesData?.find(c => c.id === id);
+                return { id, name: cat?.name || '' };
+              }).filter(c => c.name)}
+            />
           </div>
         )}
 
