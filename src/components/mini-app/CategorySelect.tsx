@@ -169,10 +169,10 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
   }
 
   return (
-    <div className="space-y-3" ref={dropdownRef}>
+    <div className="relative space-y-3" ref={dropdownRef}>
       {/* Header with label */}
       <label className="text-sm font-medium text-foreground flex items-center gap-2">
-        {t('categories')} <span className="text-destructive">*</span>
+        Выбрать профессию <span className="text-destructive">*</span>
         {selectedIds.length > 0 && (
           <span className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary font-semibold">
             {selectedIds.length}
@@ -193,7 +193,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
       >
         <div className="flex-1 text-left">
           {selectedIds.length === 0 ? (
-            <span className="text-muted-foreground">Выберите категории...</span>
+            <span className="text-muted-foreground">Выберите профессию...</span>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {selectedCategories.slice(0, 3).map(cat => {
@@ -222,16 +222,16 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
         )} />
       </button>
 
-      {/* Dropdown menu */}
+      {/* Dropdown menu - opens upward */}
       {isOpen && (
-        <div className="absolute z-50 w-full max-w-md mt-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-50 left-0 right-0 bottom-full mb-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
           {/* Search */}
           <div className="p-3 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Поиск категории..."
+                placeholder="Поиск профессии..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -256,7 +256,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
           <div className="max-h-64 overflow-y-auto">
             {filteredCategories.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-                Категории не найдены
+                Профессии не найдены
               </div>
             ) : (
               filteredCategories.map(cat => {
