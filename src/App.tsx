@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import PartnerForm from "./pages/PartnerForm";
 import OrderForm from "./pages/OrderForm";
 import QuestionForm from "./pages/QuestionForm";
+import MyCard from "./pages/MyCard";
 import NotFound from "./pages/NotFound";
 import AdminAuth from "./pages/admin/AdminAuth";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/partner-form" element={<PartnerForm />} />
             <Route path="/order-form" element={<OrderForm />} />
             <Route path="/question-form" element={<QuestionForm />} />
+            <Route path="/my-card" element={<MyCard />} />
             
             {/* Admin routes */}
             <Route path="/admin/login" element={<AdminAuth />} />

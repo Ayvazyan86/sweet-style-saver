@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.telegram-webhook]
 verify_jwt = false
+
+[functions.update-partner-post]
+verify_jwt = false
