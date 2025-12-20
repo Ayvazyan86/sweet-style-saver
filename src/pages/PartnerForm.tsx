@@ -7,6 +7,7 @@ import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
+import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -410,12 +411,11 @@ export default function PartnerForm() {
                     error={errors.age}
                     success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
                   />
-                  <FormInput
+                  <CityAutocomplete
                     label={t('city')}
                     value={formData.city}
-                    onChange={e => updateField('city', e.target.value)}
+                    onChange={(value) => updateField('city', value)}
                     placeholder={t('enterCity')}
-                    success={formData.city.trim().length >= 2}
                   />
                 </div>
 
