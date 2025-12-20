@@ -12,7 +12,8 @@ import {
   X,
   BarChart3,
   ShoppingCart,
-  HelpCircle
+  HelpCircle,
+  Settings
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/admin/partners', label: 'Партнёры', icon: Users },
   { href: '/admin/orders', label: 'Заказы', icon: ShoppingCart },
   { href: '/admin/questions', label: 'Вопросы', icon: HelpCircle },
+  { href: '/admin/settings', label: 'Настройки', icon: Settings },
 ];
 
 export default function AdminLayout() {
