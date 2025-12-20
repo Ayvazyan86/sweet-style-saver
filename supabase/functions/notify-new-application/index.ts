@@ -6,7 +6,8 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const ADMIN_CHAT_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID')
+// Personal Telegram ID of @Ayvazyan_VK for direct notifications
+const ADMIN_CHAT_ID = '264133466'
 
 interface ApplicationPayload {
   type: 'INSERT'
@@ -56,9 +57,6 @@ Deno.serve(async (req) => {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
     }
 
-    if (!ADMIN_CHAT_ID) {
-      throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured')
-    }
 
     const payload: ApplicationPayload = await req.json()
     console.log('Received payload:', JSON.stringify(payload))

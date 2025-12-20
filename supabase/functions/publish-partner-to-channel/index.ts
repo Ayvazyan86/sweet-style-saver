@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const CHANNEL_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID')
+const CHANNEL_ID = Deno.env.get('TELEGRAM_CHANNEL_ID')
 const DISCUSSION_CHAT_ID = Deno.env.get('TELEGRAM_DISCUSSION_CHAT_ID')
 
 interface PublishRequest {
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     }
 
     if (!CHANNEL_ID) {
-      throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured')
+      throw new Error('TELEGRAM_CHANNEL_ID is not configured')
     }
 
     const { partner_profile_id }: PublishRequest = await req.json()
