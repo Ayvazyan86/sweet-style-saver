@@ -22,9 +22,18 @@ interface PartnerProfile {
   user_id: string;
 }
 
+interface PartnerApplication {
+  id: string;
+  name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
+  created_at: string;
+}
+
 interface UsePartnerStatusResult {
   isPartner: boolean;
   partnerProfile: PartnerProfile | null;
+  pendingApplication: PartnerApplication | null;
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
@@ -34,6 +43,7 @@ export function usePartnerStatus(): UsePartnerStatusResult {
   const { user } = useTelegram();
   const [isPartner, setIsPartner] = useState(false);
   const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
+  const [pendingApplication, setPendingApplication] = useState<PartnerApplication | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -61,6 +71,7 @@ export function usePartnerStatus(): UsePartnerStatusResult {
       if (!profile) {
         setIsPartner(false);
         setPartnerProfile(null);
+        setPendingApplication(null);
         setIsLoading(false);
         return;
       }
@@ -79,15 +90,36 @@ export function usePartnerStatus(): UsePartnerStatusResult {
       if (partnerData) {
         setIsPartner(true);
         setPartnerProfile(partnerData as PartnerProfile);
+        setPendingApplication(null);
       } else {
         setIsPartner(false);
         setPartnerProfile(null);
+
+        // Проверяем наличие заявки
+        const { data: appData, error: appError } = await supabase
+          .from('partner_applications')
+          .select('id, name, status, rejection_reason, created_at')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (appError) {
+          throw appError;
+        }
+
+        if (appData) {
+          setPendingApplication(appData as PartnerApplication);
+        } else {
+          setPendingApplication(null);
+        }
       }
     } catch (err) {
       console.error('Error fetching partner status:', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
       setIsPartner(false);
       setPartnerProfile(null);
+      setPendingApplication(null);
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +132,7 @@ export function usePartnerStatus(): UsePartnerStatusResult {
   return {
     isPartner,
     partnerProfile,
+    pendingApplication,
     isLoading,
     error,
     refetch: fetchPartnerStatus,

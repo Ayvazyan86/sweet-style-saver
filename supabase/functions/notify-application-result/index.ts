@@ -47,6 +47,27 @@ async function sendTelegramMessage(chatId: string | number, text: string) {
   return response.json()
 }
 
+async function publishPartnerToChannel(supabaseUrl: string, serviceRoleKey: string, partnerProfileId: string) {
+  const url = `${supabaseUrl}/functions/v1/publish-partner-to-channel`
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${serviceRoleKey}`,
+    },
+    body: JSON.stringify({ partner_profile_id: partnerProfileId }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('Error publishing to channel:', error)
+    throw new Error(`Error publishing to channel: ${error}`)
+  }
+
+  return response.json()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -108,12 +129,98 @@ Deno.serve(async (req) => {
     let message: string
     
     if (newStatus === 'approved') {
+      // При одобрении - создаём профиль партнёра и публикуем на канале
+      const { data: application, error: appError } = await supabase
+        .from('partner_applications')
+        .select('*')
+        .eq('id', payload.record.id)
+        .single()
+
+      if (appError) {
+        console.error('Error fetching application:', appError)
+        throw appError
+      }
+
+      // Проверяем, есть ли уже профиль партнёра
+      const { data: existingProfile } = await supabase
+        .from('partner_profiles')
+        .select('id')
+        .eq('application_id', payload.record.id)
+        .maybeSingle()
+
+      let partnerProfileId: string
+
+      if (existingProfile) {
+        partnerProfileId = existingProfile.id
+      } else {
+        // Создаём профиль партнёра
+        const { data: newProfile, error: createError } = await supabase
+          .from('partner_profiles')
+          .insert({
+            user_id: application.user_id,
+            application_id: application.id,
+            name: application.name,
+            age: application.age,
+            profession: application.profession,
+            city: application.city,
+            agency_name: application.agency_name,
+            agency_description: application.agency_description,
+            self_description: application.self_description,
+            phone: application.phone,
+            tg_channel: application.tg_channel,
+            website: application.website,
+            youtube: application.youtube,
+            office_address: application.office_address,
+            status: 'active',
+            partner_type: 'free',
+          })
+          .select('id')
+          .single()
+
+        if (createError) {
+          console.error('Error creating partner profile:', createError)
+          throw createError
+        }
+
+        partnerProfileId = newProfile.id
+
+        // Копируем категории из заявки в профиль
+        const { data: appCategories } = await supabase
+          .from('partner_application_categories')
+          .select('category_id')
+          .eq('application_id', application.id)
+
+        if (appCategories && appCategories.length > 0) {
+          const categoryInserts = appCategories.map(c => ({
+            profile_id: partnerProfileId,
+            category_id: c.category_id,
+          }))
+
+          await supabase
+            .from('partner_profile_categories')
+            .insert(categoryInserts)
+        }
+      }
+
+      // Публикуем карточку на канале
+      try {
+        await publishPartnerToChannel(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          partnerProfileId
+        )
+        console.log('Partner published to channel:', partnerProfileId)
+      } catch (publishError) {
+        console.error('Error publishing to channel:', publishError)
+        // Продолжаем даже если публикация не удалась
+      }
+
       message = `
 ✅ <b>Ваша заявка одобрена!</b>
 
 Поздравляем, ${payload.record.name}! Ваша заявка на партнёрство успешно прошла модерацию.
 
-Теперь вы можете получать заказы и вопросы от клиентов.
+Ваша карточка опубликована на канале. Теперь вы можете получать заказы и вопросы от клиентов.
 
 Добро пожаловать в команду! 🎉
       `.trim()
