@@ -26,7 +26,8 @@ import {
   Phone,
   MapPin,
   Globe,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -46,6 +47,7 @@ export default function AdminApplications() {
   const [viewingApplication, setViewingApplication] = useState<PartnerApplication | null>(null);
   const [rejectingApplication, setRejectingApplication] = useState<PartnerApplication | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [deletingApplication, setDeletingApplication] = useState<PartnerApplication | null>(null);
 
   // Fetch pending applications with categories
   const { data: applications, isLoading } = useQuery({
@@ -176,6 +178,33 @@ export default function AdminApplications() {
     },
   });
 
+  // Delete application mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Сначала удаляем связанные категории
+      await supabase
+        .from('partner_application_categories')
+        .delete()
+        .eq('application_id', id);
+      
+      // Затем удаляем заявку
+      const { error } = await supabase
+        .from('partner_applications')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
+      setDeletingApplication(null);
+      toast.success('Заявка удалена');
+    },
+    onError: (error) => {
+      toast.error('Ошибка удаления', { description: error.message });
+    },
+  });
+
   // Filter applications
   const filteredApplications = applications?.filter(app => 
     app.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -278,6 +307,7 @@ export default function AdminApplications() {
                       key={app.id}
                       application={app}
                       onView={() => setViewingApplication(app)}
+                      onDelete={() => setDeletingApplication(app)}
                       showStatus
                     />
                   ))}
@@ -449,6 +479,34 @@ export default function AdminApplications() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={!!deletingApplication} onOpenChange={() => setDeletingApplication(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Удалить заявку</DialogTitle>
+            <DialogDescription>
+              Вы уверены что хотите удалить заявку "{deletingApplication?.name}"? Это действие нельзя отменить.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingApplication(null)}>
+              Отмена
+            </Button>
+            <Button
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletingApplication && deleteMutation.mutate(deletingApplication.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Удалить'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -458,6 +516,7 @@ function ApplicationCard({
   onView, 
   onApprove, 
   onReject,
+  onDelete,
   isApproving,
   showStatus
 }: { 
@@ -465,6 +524,7 @@ function ApplicationCard({
   onView: () => void;
   onApprove?: () => void;
   onReject?: () => void;
+  onDelete?: () => void;
   isApproving?: boolean;
   showStatus?: boolean;
 }) {
@@ -536,6 +596,16 @@ function ApplicationCard({
               )}
             </Button>
           </>
+        )}
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </div>

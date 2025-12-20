@@ -74,6 +74,10 @@ function formatPartnerMessage(partner: {
   tg_channel?: string | null
   website?: string | null
   youtube?: string | null
+  rutube?: string | null
+  dzen?: string | null
+  vk_video?: string | null
+  tg_video?: string | null
   office_address?: string | null
   categories?: { name: string }[]
 }) {
@@ -128,8 +132,34 @@ function formatPartnerMessage(partner: {
     message += `🌐 <a href="${websiteUrl}">Сайт</a>\n`
   }
   
+  // Видеоплатформы
+  const videoLinks: string[] = []
+  
   if (partner.youtube) {
-    message += `▶️ <a href="${partner.youtube}">YouTube</a>\n`
+    videoLinks.push(`<a href="${partner.youtube}">YouTube</a>`)
+  }
+  
+  if (partner.rutube) {
+    videoLinks.push(`<a href="${partner.rutube}">Rutube</a>`)
+  }
+  
+  if (partner.dzen) {
+    videoLinks.push(`<a href="${partner.dzen}">Дзен</a>`)
+  }
+  
+  if (partner.vk_video) {
+    videoLinks.push(`<a href="${partner.vk_video}">VK Видео</a>`)
+  }
+  
+  if (partner.tg_video) {
+    const tgVideoLink = partner.tg_video.startsWith('@') 
+      ? `https://t.me/${partner.tg_video.slice(1)}`
+      : partner.tg_video
+    videoLinks.push(`<a href="${tgVideoLink}">TG Видео</a>`)
+  }
+  
+  if (videoLinks.length > 0) {
+    message += `▶️ ${videoLinks.join(' | ')}\n`
   }
   
   if (partner.office_address) {
