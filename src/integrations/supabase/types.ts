@@ -413,6 +413,7 @@ export type Database = {
           agency_name: string | null
           city: string | null
           created_at: string | null
+          dzen: string | null
           id: string
           moderated_at: string | null
           moderated_by: string | null
@@ -422,11 +423,14 @@ export type Database = {
           photo_url: string | null
           profession: string | null
           rejection_reason: string | null
+          rutube: string | null
           self_description: string | null
           status: Database["public"]["Enums"]["application_status"] | null
           tg_channel: string | null
+          tg_video: string | null
           updated_at: string | null
           user_id: string
+          vk_video: string | null
           website: string | null
           youtube: string | null
         }
@@ -436,6 +440,7 @@ export type Database = {
           agency_name?: string | null
           city?: string | null
           created_at?: string | null
+          dzen?: string | null
           id?: string
           moderated_at?: string | null
           moderated_by?: string | null
@@ -445,11 +450,14 @@ export type Database = {
           photo_url?: string | null
           profession?: string | null
           rejection_reason?: string | null
+          rutube?: string | null
           self_description?: string | null
           status?: Database["public"]["Enums"]["application_status"] | null
           tg_channel?: string | null
+          tg_video?: string | null
           updated_at?: string | null
           user_id: string
+          vk_video?: string | null
           website?: string | null
           youtube?: string | null
         }
@@ -459,6 +467,7 @@ export type Database = {
           agency_name?: string | null
           city?: string | null
           created_at?: string | null
+          dzen?: string | null
           id?: string
           moderated_at?: string | null
           moderated_by?: string | null
@@ -468,11 +477,14 @@ export type Database = {
           photo_url?: string | null
           profession?: string | null
           rejection_reason?: string | null
+          rutube?: string | null
           self_description?: string | null
           status?: Database["public"]["Enums"]["application_status"] | null
           tg_channel?: string | null
+          tg_video?: string | null
           updated_at?: string | null
           user_id?: string
+          vk_video?: string | null
           website?: string | null
           youtube?: string | null
         }
@@ -584,6 +596,7 @@ export type Database = {
           city: string | null
           created_at: string | null
           discussion_message_id: number | null
+          dzen: string | null
           id: string
           is_recommended: boolean | null
           name: string
@@ -592,11 +605,14 @@ export type Database = {
           partner_type: Database["public"]["Enums"]["partner_type"] | null
           phone: string | null
           profession: string | null
+          rutube: string | null
           self_description: string | null
           status: Database["public"]["Enums"]["partner_status"] | null
           tg_channel: string | null
+          tg_video: string | null
           updated_at: string | null
           user_id: string
+          vk_video: string | null
           website: string | null
           youtube: string | null
         }
@@ -609,6 +625,7 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           discussion_message_id?: number | null
+          dzen?: string | null
           id?: string
           is_recommended?: boolean | null
           name: string
@@ -617,11 +634,14 @@ export type Database = {
           partner_type?: Database["public"]["Enums"]["partner_type"] | null
           phone?: string | null
           profession?: string | null
+          rutube?: string | null
           self_description?: string | null
           status?: Database["public"]["Enums"]["partner_status"] | null
           tg_channel?: string | null
+          tg_video?: string | null
           updated_at?: string | null
           user_id: string
+          vk_video?: string | null
           website?: string | null
           youtube?: string | null
         }
@@ -634,6 +654,7 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           discussion_message_id?: number | null
+          dzen?: string | null
           id?: string
           is_recommended?: boolean | null
           name?: string
@@ -642,11 +663,14 @@ export type Database = {
           partner_type?: Database["public"]["Enums"]["partner_type"] | null
           phone?: string | null
           profession?: string | null
+          rutube?: string | null
           self_description?: string | null
           status?: Database["public"]["Enums"]["partner_status"] | null
           tg_channel?: string | null
+          tg_video?: string | null
           updated_at?: string | null
           user_id?: string
+          vk_video?: string | null
           website?: string | null
           youtube?: string | null
         }

@@ -8,6 +8,7 @@ import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
+import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -46,6 +47,10 @@ export default function PartnerForm() {
     tg_channel: '',
     website: '',
     youtube: '',
+    rutube: '',
+    dzen: '',
+    vk_video: '',
+    tg_video: '',
     office_address: '',
     photo_url: '',
   });
@@ -169,6 +174,32 @@ export default function PartnerForm() {
     return /^@[a-zA-Z0-9_]{5,}$/.test(tg) || /^https?:\/\/(t\.me|telegram\.me)\//.test(tg);
   };
 
+  // Валидаторы для видеоплатформ
+  const isValidYoutube = (url: string) => {
+    if (!url) return true;
+    return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(url);
+  };
+
+  const isValidRutube = (url: string) => {
+    if (!url) return true;
+    return /^https?:\/\/(www\.)?rutube\.ru\//.test(url);
+  };
+
+  const isValidDzen = (url: string) => {
+    if (!url) return true;
+    return /^https?:\/\/(www\.)?(dzen\.ru|zen\.yandex\.ru)\//.test(url);
+  };
+
+  const isValidVkVideo = (url: string) => {
+    if (!url) return true;
+    return /^https?:\/\/(www\.)?(vk\.com\/video|vkvideo\.ru)/.test(url);
+  };
+
+  const isValidTgVideo = (url: string) => {
+    if (!url) return true;
+    return /^https?:\/\/(t\.me|telegram\.me)\//.test(url) || /^@[a-zA-Z0-9_]{5,}$/.test(url);
+  };
+
   const validateStep = (step: number) => {
     const newErrors: Record<string, string> = {};
     
@@ -191,8 +222,20 @@ export default function PartnerForm() {
       if (formData.website && !isValidUrl(formData.website)) {
         newErrors.website = 'Неверный формат URL';
       }
-      if (formData.youtube && !isValidUrl(formData.youtube)) {
-        newErrors.youtube = 'Неверный формат URL';
+      if (formData.youtube && !isValidYoutube(formData.youtube)) {
+        newErrors.youtube = 'Введите ссылку youtube.com или youtu.be';
+      }
+      if (formData.rutube && !isValidRutube(formData.rutube)) {
+        newErrors.rutube = 'Введите ссылку rutube.ru';
+      }
+      if (formData.dzen && !isValidDzen(formData.dzen)) {
+        newErrors.dzen = 'Введите ссылку dzen.ru';
+      }
+      if (formData.vk_video && !isValidVkVideo(formData.vk_video)) {
+        newErrors.vk_video = 'Введите ссылку vk.com/video или vkvideo.ru';
+      }
+      if (formData.tg_video && !isValidTgVideo(formData.tg_video)) {
+        newErrors.tg_video = 'Введите @username или ссылку t.me';
       }
     }
     
@@ -268,6 +311,10 @@ export default function PartnerForm() {
           tg_channel: formData.tg_channel || null,
           website: formData.website || null,
           youtube: formData.youtube || null,
+          rutube: formData.rutube || null,
+          dzen: formData.dzen || null,
+          vk_video: formData.vk_video || null,
+          tg_video: formData.tg_video || null,
           office_address: formData.office_address || null,
           photo_url: formData.photo_url || null,
         })
@@ -549,22 +596,57 @@ export default function PartnerForm() {
                 />
 
                 <FormInput
-                  label={t('youtube')}
+                  label="YouTube"
                   value={formData.youtube}
                   onChange={e => updateField('youtube', e.target.value)}
                   placeholder="https://youtube.com/@channel"
-                  hint="YouTube, Rutube, VK Video, Яндекс Дзен или VC.ru"
                   error={errors.youtube}
-                  success={!!formData.youtube && isValidUrl(formData.youtube)}
+                  success={!!formData.youtube && isValidYoutube(formData.youtube)}
                 />
 
                 <FormInput
+                  label="Rutube"
+                  value={formData.rutube}
+                  onChange={e => updateField('rutube', e.target.value)}
+                  placeholder="https://rutube.ru/channel/..."
+                  error={errors.rutube}
+                  success={!!formData.rutube && isValidRutube(formData.rutube)}
+                />
+
+                <FormInput
+                  label="Яндекс Дзен"
+                  value={formData.dzen}
+                  onChange={e => updateField('dzen', e.target.value)}
+                  placeholder="https://dzen.ru/..."
+                  error={errors.dzen}
+                  success={!!formData.dzen && isValidDzen(formData.dzen)}
+                />
+
+                <FormInput
+                  label="VK Видео"
+                  value={formData.vk_video}
+                  onChange={e => updateField('vk_video', e.target.value)}
+                  placeholder="https://vk.com/video..."
+                  error={errors.vk_video}
+                  success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
+                />
+
+                <FormInput
+                  label="Telegram видео"
+                  value={formData.tg_video}
+                  onChange={e => updateField('tg_video', e.target.value)}
+                  placeholder="@channel или https://t.me/..."
+                  hint="Канал с видеоконтентом"
+                  error={errors.tg_video}
+                  success={!!formData.tg_video && isValidTgVideo(formData.tg_video)}
+                />
+
+                <AddressAutocomplete
                   label={t('officeAddress')}
                   value={formData.office_address}
-                  onChange={e => updateField('office_address', e.target.value)}
-                  placeholder="Город, улица, дом, офис"
-                  hint="Укажите, если принимаете клиентов в офисе"
-                  success={formData.office_address.trim().length >= 5}
+                  onChange={(address) => updateField('office_address', address)}
+                  placeholder="Москва, ул. Примерная, д. 1, офис 123"
+                  hint="Адрес проверяется через Yandex Geocoder"
                 />
               </div>
             </GlassCard>
