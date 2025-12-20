@@ -7,9 +7,10 @@ interface PhotoUploadProps {
   value?: string;
   onChange: (url: string | null) => void;
   className?: string;
+  compact?: boolean;
 }
 
-export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
+export function PhotoUpload({ value, onChange, className, compact = false }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +82,7 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
   };
 
   return (
-    <div className={cn('flex flex-col items-center', className)}>
+    <div className={cn('flex flex-col', compact ? 'items-start' : 'items-center', className)}>
       {/* Clickable Avatar */}
       <div className="relative group">
         <button
@@ -89,14 +90,15 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
           onClick={handleClick}
           disabled={uploading}
           className={cn(
-            'w-24 h-24 rounded-2xl overflow-hidden',
+            'rounded-2xl overflow-hidden',
             'bg-card/50 backdrop-blur-sm border-2 border-dashed border-white/20',
             'flex items-center justify-center',
             'transition-all duration-200 cursor-pointer',
             'hover:border-primary/50 hover:bg-card/70',
             'focus:outline-none focus:ring-2 focus:ring-primary/30',
             value && 'border-solid border-primary/30',
-            uploading && 'opacity-50 cursor-not-allowed'
+            uploading && 'opacity-50 cursor-not-allowed',
+            compact ? 'w-20 h-20' : 'w-24 h-24'
           )}
         >
           {value ? (
@@ -107,8 +109,8 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
             />
           ) : (
             <div className="flex flex-col items-center gap-1 text-muted-foreground">
-              <User className="w-8 h-8" />
-              <Camera className="w-4 h-4" />
+              <User className={compact ? 'w-6 h-6' : 'w-8 h-8'} />
+              <Camera className={compact ? 'w-3 h-3' : 'w-4 h-4'} />
             </div>
           )}
           
@@ -130,9 +132,9 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
           <button
             type="button"
             onClick={handleRemove}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-white flex items-center justify-center hover:bg-destructive/80 transition-colors z-10"
+            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center hover:bg-destructive/80 transition-colors z-10"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3 h-3" />
           </button>
         )}
       </div>
@@ -147,14 +149,9 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
         disabled={uploading}
       />
 
-      {/* Label */}
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        {value ? 'Нажмите чтобы изменить' : 'Нажмите чтобы загрузить'}
-      </p>
-
       {error && (
-        <p className="text-sm text-destructive flex items-center gap-1.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-          <X className="w-4 h-4 flex-shrink-0" /> {error}
+        <p className="text-xs text-destructive flex items-center gap-1 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+          <X className="w-3 h-3 flex-shrink-0" /> {error}
         </p>
       )}
     </div>

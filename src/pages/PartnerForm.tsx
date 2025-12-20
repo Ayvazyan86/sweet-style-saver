@@ -430,63 +430,58 @@ export default function PartnerForm() {
       <form onSubmit={handleSubmit} className="max-w-md mx-auto">
         {/* Step 1: Личные данные */}
         {currentStep === 1 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Личные данные</h2>
-                  <p className="text-sm text-muted-foreground">Расскажите о себе</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <GlassCard className="p-4">
+              <div className="flex items-start gap-4">
+                {/* Photo on the left */}
                 <PhotoUpload
                   value={formData.photo_url || undefined}
                   onChange={(url) => updateField('photo_url', url || '')}
+                  compact
                 />
+                
+                {/* Fields on the right */}
+                <div className="flex-1 space-y-3">
+                  <div className="grid grid-cols-[1fr_70px] gap-3">
+                    <FormInput
+                      label={t('name')}
+                      required
+                      value={formData.name}
+                      onChange={e => updateField('name', e.target.value)}
+                      placeholder={t('enterName')}
+                      error={errors.name}
+                      success={formData.name.trim().length >= 2}
+                    />
+                    <FormInput
+                      label={t('age')}
+                      required
+                      type="number"
+                      min={16}
+                      max={100}
+                      value={formData.age}
+                      onChange={e => updateField('age', e.target.value)}
+                      placeholder="25"
+                      error={errors.age}
+                      success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
+                    />
+                  </div>
 
-                <div className="grid grid-cols-[1fr_80px] gap-4">
-                  <FormInput
-                    label={t('name')}
-                    required
-                    value={formData.name}
-                    onChange={e => updateField('name', e.target.value)}
-                    placeholder={t('enterName')}
-                    error={errors.name}
-                    success={formData.name.trim().length >= 2}
-                  />
-                  <FormInput
-                    label={t('age')}
-                    required
-                    type="number"
-                    min={16}
-                    max={100}
-                    value={formData.age}
-                    onChange={e => updateField('age', e.target.value)}
-                    placeholder="25"
-                    error={errors.age}
-                    success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
+                  <CityAutocomplete
+                    label={t('city')}
+                    value={formData.city}
+                    onChange={(value) => updateField('city', value)}
+                    placeholder={t('enterCity')}
                   />
                 </div>
-
-                <CityAutocomplete
-                  label={t('city')}
-                  value={formData.city}
-                  onChange={(value) => updateField('city', value)}
-                  placeholder={t('enterCity')}
-                />
-
-                <CategorySelect
-                  selectedIds={selectedCategories}
-                  onChange={setSelectedCategories}
-                  multiple
-                  error={errors.categories}
-                />
               </div>
             </GlassCard>
+
+            <CategorySelect
+              selectedIds={selectedCategories}
+              onChange={setSelectedCategories}
+              multiple
+              error={errors.categories}
+            />
           </div>
         )}
 
