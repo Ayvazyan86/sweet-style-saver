@@ -1,7 +1,8 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
+import { usePartnerStatus } from '@/hooks/usePartnerStatus';
 import { GlassCard } from './GlassCard';
-import { UserPlus, ShoppingCart, HelpCircle, ChevronRight } from 'lucide-react';
+import { UserPlus, ShoppingCart, HelpCircle, ChevronRight, User, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface MenuItemProps {
@@ -10,9 +11,10 @@ interface MenuItemProps {
   description: string;
   gradient: string;
   onClick: () => void;
+  loading?: boolean;
 }
 
-const MenuItem = ({ icon, title, description, gradient, onClick }: MenuItemProps) => (
+const MenuItem = ({ icon, title, description, gradient, onClick, loading }: MenuItemProps) => (
   <GlassCard 
     hoverable 
     onClick={onClick}
@@ -20,7 +22,11 @@ const MenuItem = ({ icon, title, description, gradient, onClick }: MenuItemProps
   >
     <div className="flex items-center gap-4">
       <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${gradient} shadow-lg`}>
-        {icon}
+        {loading ? (
+          <Loader2 className="w-7 h-7 text-white animate-spin" />
+        ) : (
+          icon
+        )}
       </div>
       <div className="flex-1">
         <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -36,6 +42,7 @@ const MenuItem = ({ icon, title, description, gradient, onClick }: MenuItemProps
 export const MainMenu = () => {
   const { t } = useLanguage();
   const { user, hapticFeedback, isTestMode } = useTelegram();
+  const { isPartner, isLoading: partnerLoading } = usePartnerStatus();
   const navigate = useNavigate();
 
   const handleNavigate = (path: string) => {
@@ -58,13 +65,26 @@ export const MainMenu = () => {
 
       {/* Menu Items */}
       <div className="space-y-4 max-w-md mx-auto">
-        <MenuItem
-          icon={<UserPlus className="w-7 h-7 text-white" />}
-          title={t('becomePartner')}
-          description="Станьте партнёром и получайте заказы"
-          gradient="bg-gradient-primary"
-          onClick={() => handleNavigate('/partner-form')}
-        />
+        {/* Динамический пункт меню: Стать партнёром / Моя карточка */}
+        {isPartner ? (
+          <MenuItem
+            icon={<User className="w-7 h-7 text-white" />}
+            title="Моя карточка"
+            description="Редактируйте вашу карточку партнёра"
+            gradient="bg-gradient-primary"
+            onClick={() => handleNavigate('/my-card')}
+            loading={partnerLoading}
+          />
+        ) : (
+          <MenuItem
+            icon={<UserPlus className="w-7 h-7 text-white" />}
+            title={t('becomePartner')}
+            description="Станьте партнёром и получайте заказы"
+            gradient="bg-gradient-primary"
+            onClick={() => handleNavigate('/partner-form')}
+            loading={partnerLoading}
+          />
+        )}
         
         <MenuItem
           icon={<ShoppingCart className="w-7 h-7 text-white" />}

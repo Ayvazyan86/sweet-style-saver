@@ -7,12 +7,11 @@ import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function QuestionForm() {
   const { t } = useLanguage();
-  const { user, hapticFeedback } = useTelegram();
+  const { hapticFeedback } = useTelegram();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
@@ -52,78 +51,14 @@ export default function QuestionForm() {
     setLoading(true);
     hapticFeedback('light');
 
-    try {
-      // Находим или создаём профиль
-      let profileId: string;
-      
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('telegram_id', user?.id || 0)
-        .maybeSingle();
-
-      if (existingProfile) {
-        profileId = existingProfile.id;
-      } else {
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            telegram_id: user?.id || Math.floor(Math.random() * 1000000000),
-            username: user?.username,
-            first_name: user?.first_name,
-            last_name: user?.last_name,
-            language_code: user?.language_code || 'ru',
-          })
-          .select('id')
-          .single();
-
-        if (profileError) throw profileError;
-        profileId = newProfile.id;
-      }
-
-      // Создаём вопрос (используем первую категорию как основную)
-      const { data: question, error: questionError } = await supabase
-        .from('questions')
-        .insert({
-          user_id: profileId,
-          category_id: selectedCategory[0],
-          text: formData.text,
-          details: formData.details || null,
-        })
-        .select('id')
-        .single();
-
-      if (questionError) throw questionError;
-
-      // Добавляем все выбранные категории в связующую таблицу
-      if (selectedCategory.length > 0) {
-        const categoryInserts = selectedCategory.map(categoryId => ({
-          question_id: question.id,
-          category_id: categoryId,
-        }));
-
-        const { error: catError } = await supabase
-          .from('question_categories')
-          .insert(categoryInserts);
-
-        if (catError) throw catError;
-      }
-
-      hapticFeedback('success');
-      toast.success(t('applicationSent'), {
-        description: t('applicationSentDesc'),
-      });
-      
-      navigate('/');
-    } catch (error) {
-      console.error('Error submitting question:', error);
-      hapticFeedback('error');
-      toast.error(t('error'), {
-        description: t('errorDesc'),
-      });
-    } finally {
+    // Симуляция отправки (функционал временно отключён)
+    setTimeout(() => {
       setLoading(false);
-    }
+      hapticFeedback('success');
+      toast.info('Функция временно недоступна', {
+        description: 'Раздел вопросов находится в разработке',
+      });
+    }, 1000);
   };
 
   return (

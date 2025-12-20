@@ -7,12 +7,11 @@ import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function OrderForm() {
   const { t } = useLanguage();
-  const { user, hapticFeedback } = useTelegram();
+  const { hapticFeedback } = useTelegram();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
@@ -36,9 +35,7 @@ export default function OrderForm() {
 
   // Форматирование бюджета - только цифры с разделителями
   const formatBudget = (value: string) => {
-    // Убираем всё кроме цифр
     const digits = value.replace(/\D/g, '');
-    // Форматируем с пробелами (10 000)
     return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   };
 
@@ -69,81 +66,14 @@ export default function OrderForm() {
     setLoading(true);
     hapticFeedback('light');
 
-    try {
-      // Находим или создаём профиль
-      let profileId: string;
-      
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('telegram_id', user?.id || 0)
-        .maybeSingle();
-
-      if (existingProfile) {
-        profileId = existingProfile.id;
-      } else {
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            telegram_id: user?.id || Math.floor(Math.random() * 1000000000),
-            username: user?.username,
-            first_name: user?.first_name,
-            last_name: user?.last_name,
-            language_code: user?.language_code || 'ru',
-          })
-          .select('id')
-          .single();
-
-        if (profileError) throw profileError;
-        profileId = newProfile.id;
-      }
-
-      // Создаём заказ (используем первую категорию как основную)
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: profileId,
-          category_id: selectedCategory[0],
-          title: formData.title,
-          text: formData.text,
-          city: formData.city || null,
-          budget: formData.budget || null,
-          contact: formData.contact || null,
-        })
-        .select('id')
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Добавляем все выбранные категории в связующую таблицу
-      if (selectedCategory.length > 0) {
-        const categoryInserts = selectedCategory.map(categoryId => ({
-          order_id: order.id,
-          category_id: categoryId,
-        }));
-
-        const { error: catError } = await supabase
-          .from('order_categories')
-          .insert(categoryInserts);
-
-        if (catError) throw catError;
-      }
-
-      hapticFeedback('success');
-      toast.success(t('applicationSent'), {
-        description: t('applicationSentDesc'),
-      });
-      
-      navigate('/');
-    } catch (error) {
-      console.error('Error submitting order:', error);
-      hapticFeedback('error');
-      toast.error(t('error'), {
-        description: t('errorDesc'),
-      });
-    } finally {
+    // Симуляция отправки (функционал временно отключён)
+    setTimeout(() => {
       setLoading(false);
-    }
+      hapticFeedback('success');
+      toast.info('Функция временно недоступна', {
+        description: 'Раздел заказов находится в разработке',
+      });
+    }, 1000);
   };
 
   return (
