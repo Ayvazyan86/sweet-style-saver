@@ -122,11 +122,20 @@ export const MainMenu = () => {
     <div className="min-h-screen bg-background p-4 pb-20">
       {/* Header */}
       <div className="text-center mb-8 pt-4">
-        <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-          <span className="text-3xl">🚀</span>
-        </div>
+        {/* Avatar or fallback icon */}
+        {user.photo_url ? (
+          <img 
+            src={user.photo_url} 
+            alt={user.first_name}
+            className="w-20 h-20 mx-auto mb-4 rounded-2xl object-cover shadow-glow-primary border-2 border-primary/20"
+          />
+        ) : (
+          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary text-3xl text-white font-bold">
+            {user.first_name.charAt(0).toUpperCase()}
+          </div>
+        )}
         <h1 className="text-2xl font-bold text-foreground mb-2">
-          Привет, {user.first_name}!
+          {user.first_name}
         </h1>
         <p className="text-muted-foreground">Выберите действие</p>
       </div>

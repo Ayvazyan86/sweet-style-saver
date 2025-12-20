@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Check, X, Sparkles } from 'lucide-react';
+import { Check, X, ChevronDown, Search, 
+  Camera, Video, PenTool, Scale, Megaphone, Heart, Brain, 
+  Home, Wrench, Scissors, Palette, Code, Globe, Target, 
+  TrendingUp, Briefcase, Building, GraduationCap, Languages,
+  Dumbbell, Sparkles, Flower2, PartyPopper, Monitor, Smartphone,
+  Search as SearchIcon, Zap, Car, Lightbulb, Plug, Droplet,
+  Cake, Users, MessageSquare, Calculator, FileText
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Category {
@@ -18,13 +25,96 @@ interface CategorySelectProps {
   error?: string;
 }
 
+// Маппинг ключевых слов к иконкам
+const getCategoryIcon = (name: string) => {
+  const lowerName = name.toLowerCase();
+  
+  // Фото/Видео
+  if (lowerName.includes('фотограф') || lowerName.includes('фото')) return Camera;
+  if (lowerName.includes('видеограф') || lowerName.includes('видео') || lowerName.includes('оператор')) return Video;
+  
+  // Дизайн/Творчество
+  if (lowerName.includes('дизайн') || lowerName.includes('графич')) return Palette;
+  if (lowerName.includes('копирайт') || lowerName.includes('текст') || lowerName.includes('автор')) return PenTool;
+  if (lowerName.includes('3d') || lowerName.includes('визуализ')) return Monitor;
+  
+  // Юридические/Финансы
+  if (lowerName.includes('юрист') || lowerName.includes('адвокат') || lowerName.includes('право')) return Scale;
+  if (lowerName.includes('бухгалтер') || lowerName.includes('финанс') || lowerName.includes('аудит')) return Calculator;
+  
+  // Маркетинг/SMM
+  if (lowerName.includes('маркет') || lowerName.includes('реклам')) return Megaphone;
+  if (lowerName.includes('smm') || lowerName.includes('соц')) return MessageSquare;
+  if (lowerName.includes('seo') || lowerName.includes('продвиж')) return SearchIcon;
+  if (lowerName.includes('таргет') || lowerName.includes('target')) return Target;
+  if (lowerName.includes('аналит')) return TrendingUp;
+  
+  // Здоровье/Красота
+  if (lowerName.includes('психолог') || lowerName.includes('терап')) return Brain;
+  if (lowerName.includes('косметолог') || lowerName.includes('красот')) return Sparkles;
+  if (lowerName.includes('парикмах') || lowerName.includes('стилист')) return Scissors;
+  if (lowerName.includes('маникюр') || lowerName.includes('ногт')) return Sparkles;
+  if (lowerName.includes('визаж') || lowerName.includes('макияж')) return Sparkles;
+  if (lowerName.includes('фитнес') || lowerName.includes('тренер') || lowerName.includes('спорт')) return Dumbbell;
+  if (lowerName.includes('диетолог') || lowerName.includes('питан')) return Heart;
+  if (lowerName.includes('логопед')) return Languages;
+  
+  // Недвижимость/Строительство
+  if (lowerName.includes('риэлтор') || lowerName.includes('недвиж')) return Home;
+  if (lowerName.includes('строит') || lowerName.includes('ремонт')) return Building;
+  if (lowerName.includes('электрик')) return Plug;
+  if (lowerName.includes('сантехник')) return Droplet;
+  
+  // IT/Технологии
+  if (lowerName.includes('it') || lowerName.includes('программ') || lowerName.includes('разработ')) return Code;
+  if (lowerName.includes('мобил') || lowerName.includes('приложен')) return Smartphone;
+  if (lowerName.includes('web') || lowerName.includes('сайт')) return Globe;
+  
+  // Авто
+  if (lowerName.includes('авто') || lowerName.includes('механик')) return Car;
+  
+  // Образование
+  if (lowerName.includes('репетит') || lowerName.includes('обучен') || lowerName.includes('учител')) return GraduationCap;
+  if (lowerName.includes('перевод')) return Languages;
+  
+  // Мероприятия
+  if (lowerName.includes('организатор') || lowerName.includes('мероприят') || lowerName.includes('event')) return PartyPopper;
+  if (lowerName.includes('флорист') || lowerName.includes('цвет')) return Flower2;
+  if (lowerName.includes('кондитер') || lowerName.includes('торт')) return Cake;
+  
+  // Консультации
+  if (lowerName.includes('консульт') || lowerName.includes('бизнес')) return Briefcase;
+  if (lowerName.includes('avito') || lowerName.includes('авито')) return Zap;
+  
+  // HR/Персонал
+  if (lowerName.includes('hr') || lowerName.includes('кадр') || lowerName.includes('рекрут')) return Users;
+  
+  // По умолчанию
+  return Briefcase;
+};
+
 export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }: CategorySelectProps) => {
   const { t, language } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCategories();
+  }, []);
+
+  // Закрытие при клике вне
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchCategories = async () => {
@@ -53,6 +143,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
       }
     } else {
       onChange(selectedIds.includes(id) ? [] : [id]);
+      setIsOpen(false);
     }
   };
 
@@ -61,103 +152,166 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
   };
 
   const clearAll = () => onChange([]);
-  const selectAll = () => onChange(categories.map(c => c.id));
+
+  const filteredCategories = categories.filter(cat => 
+    getCategoryName(cat).toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const selectedCategories = categories.filter(cat => selectedIds.includes(cat.id));
 
   if (loading) {
     return (
       <div className="space-y-3">
         <div className="h-5 w-24 bg-card/50 rounded animate-pulse" />
-        <div className="flex flex-wrap gap-2">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="h-11 w-28 bg-card/50 rounded-xl animate-pulse" />
-          ))}
-        </div>
+        <div className="h-12 bg-card/50 rounded-xl animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Header with label and counter */}
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground flex items-center gap-2">
-          {t('categories')} <span className="text-destructive">*</span>
-          {selectedIds.length > 0 && (
-            <span className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary font-semibold">
-              {selectedIds.length}
-            </span>
+    <div className="space-y-3" ref={dropdownRef}>
+      {/* Header with label */}
+      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+        {t('categories')} <span className="text-destructive">*</span>
+        {selectedIds.length > 0 && (
+          <span className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary font-semibold">
+            {selectedIds.length}
+          </span>
+        )}
+      </label>
+
+      {/* Dropdown trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          'w-full flex items-center justify-between px-4 py-3 rounded-xl',
+          'bg-card/60 backdrop-blur-sm border transition-all duration-200',
+          isOpen ? 'border-primary ring-2 ring-primary/20' : 'border-white/10 hover:border-primary/40',
+          error && 'border-destructive'
+        )}
+      >
+        <div className="flex-1 text-left">
+          {selectedIds.length === 0 ? (
+            <span className="text-muted-foreground">Выберите категории...</span>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedCategories.slice(0, 3).map(cat => {
+                const Icon = getCategoryIcon(cat.name);
+                return (
+                  <span 
+                    key={cat.id}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/20 text-primary text-sm"
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {getCategoryName(cat)}
+                  </span>
+                );
+              })}
+              {selectedCategories.length > 3 && (
+                <span className="px-2 py-1 rounded-lg bg-secondary text-secondary-foreground text-sm">
+                  +{selectedCategories.length - 3}
+                </span>
+              )}
+            </div>
           )}
-        </label>
-        
-        {/* Quick actions */}
-        {multiple && categories.length > 0 && (
-          <div className="flex items-center gap-2">
-            {selectedIds.length > 0 && (
+        </div>
+        <ChevronDown className={cn(
+          'w-5 h-5 text-muted-foreground transition-transform duration-200',
+          isOpen && 'rotate-180'
+        )} />
+      </button>
+
+      {/* Dropdown menu */}
+      {isOpen && (
+        <div className="absolute z-50 w-full max-w-md mt-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Search */}
+          <div className="p-3 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Поиск категории..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          {multiple && selectedIds.length > 0 && (
+            <div className="px-3 py-2 border-b border-border bg-secondary/30">
               <button
                 type="button"
                 onClick={clearAll}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                Очистить
+                Очистить выбор ({selectedIds.length})
               </button>
-            )}
-            {selectedIds.length < categories.length && (
-              <button
-                type="button"
-                onClick={selectAll}
-                className="text-xs text-primary hover:text-primary/80 transition-colors"
-              >
-                Все
-              </button>
+            </div>
+          )}
+
+          {/* Options list */}
+          <div className="max-h-64 overflow-y-auto">
+            {filteredCategories.length === 0 ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+                Категории не найдены
+              </div>
+            ) : (
+              filteredCategories.map(cat => {
+                const isSelected = selectedIds.includes(cat.id);
+                const Icon = getCategoryIcon(cat.name);
+                
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => toggleCategory(cat.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                      isSelected 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'hover:bg-secondary/50 text-foreground'
+                    )}
+                  >
+                    <div className={cn(
+                      'w-8 h-8 rounded-lg flex items-center justify-center',
+                      isSelected ? 'bg-primary/20' : 'bg-secondary'
+                    )}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="flex-1 text-sm font-medium">{getCategoryName(cat)}</span>
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-primary" />
+                    )}
+                  </button>
+                );
+              })
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map(cat => {
-          const isSelected = selectedIds.includes(cat.id);
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => toggleCategory(cat.id)}
-              className={cn(
-                'group relative px-4 py-2.5 rounded-xl text-sm font-medium',
-                'transition-all duration-200 ease-out',
-                'border active:scale-95',
-                isSelected
-                  ? 'bg-gradient-primary text-white border-transparent shadow-glow-primary'
-                  : 'bg-card/60 backdrop-blur-sm text-foreground border-white/10 hover:border-primary/40 hover:bg-card/80'
-              )}
-            >
-              <span className="flex items-center gap-2">
-                {/* Animated checkmark */}
-                <span className={cn(
-                  'flex items-center justify-center transition-all duration-200',
-                  isSelected ? 'w-4 opacity-100' : 'w-0 opacity-0'
-                )}>
-                  <Check className="w-4 h-4" />
-                </span>
+      {/* Selected categories chips (when closed) */}
+      {!isOpen && selectedCategories.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedCategories.map(cat => {
+            const Icon = getCategoryIcon(cat.name);
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => toggleCategory(cat.id)}
+                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <Icon className="w-4 h-4" />
                 {getCategoryName(cat)}
-              </span>
-              
-              {/* Glow effect on hover for unselected */}
-              {!isSelected && (
-                <span className="absolute inset-0 rounded-xl bg-gradient-primary opacity-0 group-hover:opacity-5 transition-opacity duration-200" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Hint */}
-      {selectedIds.length === 0 && !error && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5" />
-          {multiple ? 'Выберите одну или несколько категорий' : 'Выберите категорию'}
-        </p>
+                <X className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* Error message */}
