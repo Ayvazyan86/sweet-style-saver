@@ -253,7 +253,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
           )}
 
           {/* Options list */}
-          <div className="max-h-64 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="max-h-64 overflow-y-auto">
             {filteredCategories.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
                 Профессии не найдены
