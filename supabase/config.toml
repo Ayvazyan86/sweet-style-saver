@@ -1,1 +1,4 @@
 project_id = "kbjeggprymvkxhfnahxc"
+
+[functions.publish-partner-to-channel]
+verify_jwt = false

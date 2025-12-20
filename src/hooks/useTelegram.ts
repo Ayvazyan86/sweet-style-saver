@@ -74,16 +74,10 @@ declare global {
   }
 }
 
-// Фиксированный тестовый ID для разработки
-const getTestTelegramId = (): number => {
-  return 264133466;
-};
-
 export const useTelegram = () => {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
   const [user, setUser] = useState<TelegramUser | null>(null);
   const [isReady, setIsReady] = useState(false);
-  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -94,23 +88,10 @@ export const useTelegram = () => {
       setWebApp(tg);
       setUser(tg.initDataUnsafe.user);
       setIsReady(true);
-      setIsTestMode(false);
     } else {
-      // Режим тестирования без Telegram
+      // Нет Telegram WebApp - приложение должно открываться только в Telegram
       setIsReady(true);
-      setIsTestMode(true);
-      
-      // Стабильный mock user для тестирования
-      const testId = getTestTelegramId();
-      setUser({
-        id: testId,
-        first_name: 'Тестовый',
-        last_name: 'Пользователь',
-        username: 'test_user_' + testId.toString().slice(-4),
-        language_code: 'ru'
-      });
-      
-      console.log('🧪 Режим тестирования активен. Telegram ID:', testId);
+      setUser(null);
     }
   }, []);
 
@@ -128,7 +109,6 @@ export const useTelegram = () => {
     webApp,
     user,
     isReady,
-    isTestMode,
     initData: webApp?.initData || '',
     hapticFeedback,
     colorScheme: webApp?.colorScheme || 'dark',
