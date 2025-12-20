@@ -8,6 +8,7 @@ import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
+import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { ArrowLeft, User, Briefcase, Phone, Save, Loader2, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -409,27 +410,24 @@ export default function MyCard() {
                   success={formData.name.trim().length >= 2}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormInput
-                    label={t('age')}
-                    required
-                    type="number"
-                    min={16}
-                    max={100}
-                    value={formData.age}
-                    onChange={e => updateField('age', e.target.value)}
-                    placeholder="25"
-                    error={errors.age}
-                    success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
-                  />
-                  <FormInput
-                    label={t('city')}
-                    value={formData.city}
-                    onChange={e => updateField('city', e.target.value)}
-                    placeholder={t('enterCity')}
-                    success={formData.city.trim().length >= 2}
-                  />
-                </div>
+                <FormInput
+                  label={t('age')}
+                  required
+                  type="number"
+                  min={16}
+                  max={100}
+                  value={formData.age}
+                  onChange={e => updateField('age', e.target.value)}
+                  placeholder="25"
+                  error={errors.age}
+                  success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
+                />
+
+                <CityAutocomplete
+                  value={formData.city}
+                  onChange={(city) => updateField('city', city)}
+                  label={t('city')}
+                />
 
                 <FormInput
                   label={t('profession')}

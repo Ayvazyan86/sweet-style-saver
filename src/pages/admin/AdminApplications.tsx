@@ -31,8 +31,14 @@ import {
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { Tables } from '@/integrations/supabase/types';
+import { Tag } from 'lucide-react';
 
-type PartnerApplication = Tables<'partner_applications'>;
+type PartnerApplication = Tables<'partner_applications'> & {
+  partner_application_categories?: {
+    category_id: string;
+    categories: { id: string; name: string } | null;
+  }[];
+};
 
 export default function AdminApplications() {
   const queryClient = useQueryClient();
@@ -41,17 +47,23 @@ export default function AdminApplications() {
   const [rejectingApplication, setRejectingApplication] = useState<PartnerApplication | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // Fetch pending applications
+  // Fetch pending applications with categories
   const { data: applications, isLoading } = useQuery({
     queryKey: ['admin-applications'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partner_applications')
-        .select('*')
+        .select(`
+          *,
+          partner_application_categories (
+            category_id,
+            categories (id, name)
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as PartnerApplication[];
+      return data;
     },
   });
 
@@ -115,12 +127,24 @@ export default function AdminApplications() {
           console.error('Error copying categories:', catError);
         }
       }
+
+      // Публикуем на канале
+      try {
+        await supabase.functions.invoke('publish-partner-to-channel', {
+          body: { partner_profile_id: profile.id }
+        });
+      } catch (publishError) {
+        console.error('Error publishing to channel:', publishError);
+        // Не прерываем процесс, просто логируем
+      }
+
+      return profile.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
       queryClient.invalidateQueries({ queryKey: ['admin-partners'] });
       setViewingApplication(null);
-      toast.success('Заявка одобрена', { description: 'Партнёр создан' });
+      toast.success('Заявка одобрена', { description: 'Партнёр создан и опубликован на канале' });
     },
     onError: (error) => {
       toast.error('Ошибка одобрения', { description: error.message });
@@ -329,6 +353,25 @@ export default function AdminApplications() {
                   {viewingApplication.agency_description && (
                     <p className="text-muted-foreground text-sm">{viewingApplication.agency_description}</p>
                   )}
+                </div>
+              )}
+
+              {/* Категории */}
+              {viewingApplication.partner_application_categories && viewingApplication.partner_application_categories.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    Категории
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingApplication.partner_application_categories.map((cat) => (
+                      cat.categories && (
+                        <Badge key={cat.category_id} variant="secondary">
+                          {cat.categories.name}
+                        </Badge>
+                      )
+                    ))}
+                  </div>
                 </div>
               )}
 
