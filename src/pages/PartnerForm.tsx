@@ -222,7 +222,6 @@ export default function PartnerForm() {
       if (!formData.age || parseInt(formData.age) < 16 || parseInt(formData.age) > 100) {
         newErrors.age = 'Введите корректный возраст (16-100)';
       }
-      if (!formData.profession.trim()) newErrors.profession = t('required');
       if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
     }
 
@@ -449,17 +448,16 @@ export default function PartnerForm() {
                   onChange={(url) => updateField('photo_url', url || '')}
                 />
 
-                <FormInput
-                  label={t('name')}
-                  required
-                  value={formData.name}
-                  onChange={e => updateField('name', e.target.value)}
-                  placeholder={t('enterName')}
-                  error={errors.name}
-                  success={formData.name.trim().length >= 2}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-[1fr_80px] gap-4">
+                  <FormInput
+                    label={t('name')}
+                    required
+                    value={formData.name}
+                    onChange={e => updateField('name', e.target.value)}
+                    placeholder={t('enterName')}
+                    error={errors.name}
+                    success={formData.name.trim().length >= 2}
+                  />
                   <FormInput
                     label={t('age')}
                     required
@@ -472,22 +470,13 @@ export default function PartnerForm() {
                     error={errors.age}
                     success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
                   />
-                  <CityAutocomplete
-                    label={t('city')}
-                    value={formData.city}
-                    onChange={(value) => updateField('city', value)}
-                    placeholder={t('enterCity')}
-                  />
                 </div>
 
-                <FormInput
-                  label={t('profession')}
-                  required
-                  value={formData.profession}
-                  onChange={e => updateField('profession', e.target.value)}
-                  placeholder={t('enterProfession')}
-                  error={errors.profession}
-                  success={formData.profession.trim().length >= 2}
+                <CityAutocomplete
+                  label={t('city')}
+                  value={formData.city}
+                  onChange={(value) => updateField('city', value)}
+                  placeholder={t('enterCity')}
                 />
 
                 <CategorySelect
