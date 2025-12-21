@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_templates: {
+        Row: {
+          created_at: string
+          font_size: number
+          id: string
+          image_url: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          text_color: string
+          text_x: number
+          text_y: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          font_size?: number
+          id?: string
+          image_url: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          text_color?: string
+          text_x?: number
+          text_y?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          font_size?: number
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          text_color?: string
+          text_x?: number
+          text_y?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -441,6 +483,7 @@ export type Database = {
           age: number | null
           agency_description: string | null
           agency_name: string | null
+          card_template_id: string | null
           city: string | null
           created_at: string | null
           dzen: string | null
@@ -468,6 +511,7 @@ export type Database = {
           age?: number | null
           agency_description?: string | null
           agency_name?: string | null
+          card_template_id?: string | null
           city?: string | null
           created_at?: string | null
           dzen?: string | null
@@ -495,6 +539,7 @@ export type Database = {
           age?: number | null
           agency_description?: string | null
           agency_name?: string | null
+          card_template_id?: string | null
           city?: string | null
           created_at?: string | null
           dzen?: string | null
@@ -519,6 +564,13 @@ export type Database = {
           youtube?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partner_applications_card_template_id_fkey"
+            columns: ["card_template_id"]
+            isOneToOne: false
+            referencedRelation: "card_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partner_applications_moderated_by_fkey"
             columns: ["moderated_by"]
@@ -622,6 +674,7 @@ export type Database = {
           agency_description: string | null
           agency_name: string | null
           application_id: string | null
+          card_template_id: string | null
           channel_post_id: number | null
           city: string | null
           created_at: string | null
@@ -651,6 +704,7 @@ export type Database = {
           agency_description?: string | null
           agency_name?: string | null
           application_id?: string | null
+          card_template_id?: string | null
           channel_post_id?: number | null
           city?: string | null
           created_at?: string | null
@@ -680,6 +734,7 @@ export type Database = {
           agency_description?: string | null
           agency_name?: string | null
           application_id?: string | null
+          card_template_id?: string | null
           channel_post_id?: number | null
           city?: string | null
           created_at?: string | null
@@ -710,6 +765,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "partner_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_profiles_card_template_id_fkey"
+            columns: ["card_template_id"]
+            isOneToOne: false
+            referencedRelation: "card_templates"
             referencedColumns: ["id"]
           },
           {
