@@ -373,12 +373,12 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
 
 // SVG Preview component for test card
 function TestCardPreview({ template, onClose }: { template: CardTemplate; onClose: () => void }) {
-  const demoData = {
+  const [demoData, setDemoData] = useState({
     name: 'Иван Петров',
     city: 'Москва',
-    age: 35,
+    age: '35',
     profession: 'Риэлтор',
-  };
+  });
 
   const escapeXml = (text: string) => {
     return text
@@ -389,7 +389,7 @@ function TestCardPreview({ template, onClose }: { template: CardTemplate; onClos
       .replace(/'/g, '&apos;');
   };
 
-  const locationAge = [demoData.city, `${demoData.age} лет`].filter(Boolean).join(', ');
+  const locationAge = [demoData.city, demoData.age ? `${demoData.age} лет` : null].filter(Boolean).join(', ');
 
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
@@ -397,7 +397,7 @@ function TestCardPreview({ template, onClose }: { template: CardTemplate; onClos
       
       <!-- Demo photo placeholder -->
       <circle cx="120" cy="225" r="80" fill="#374151" />
-      <text x="120" y="240" text-anchor="middle" fill="#9CA3AF" font-size="48" font-family="Arial, sans-serif">${demoData.name.charAt(0)}</text>
+      <text x="120" y="240" text-anchor="middle" fill="#9CA3AF" font-size="48" font-family="Arial, sans-serif">${demoData.name ? demoData.name.charAt(0).toUpperCase() : '?'}</text>
       
       <!-- Name -->
       <text 
@@ -407,38 +407,78 @@ function TestCardPreview({ template, onClose }: { template: CardTemplate; onClos
         font-size="${template.font_size}" 
         font-weight="bold" 
         fill="${template.text_color}"
-      >${escapeXml(demoData.name)}</text>
+      >${escapeXml(demoData.name || 'Имя')}</text>
       
       <!-- Location and age -->
-      <text 
-        x="${template.text_x}" 
-        y="${template.text_y + template.font_size + 10}" 
-        font-family="Arial, Helvetica, sans-serif" 
-        font-size="${Math.round(template.font_size * 0.6)}" 
-        fill="${template.text_color}"
-        opacity="0.9"
-      >${escapeXml(locationAge)}</text>
+      ${locationAge ? `
+        <text 
+          x="${template.text_x}" 
+          y="${template.text_y + template.font_size + 10}" 
+          font-family="Arial, Helvetica, sans-serif" 
+          font-size="${Math.round(template.font_size * 0.6)}" 
+          fill="${template.text_color}"
+          opacity="0.9"
+        >${escapeXml(locationAge)}</text>
+      ` : ''}
       
       <!-- Profession -->
-      <text 
-        x="${template.text_x}" 
-        y="${template.text_y + template.font_size * 2 + 20}" 
-        font-family="Arial, Helvetica, sans-serif" 
-        font-size="${Math.round(template.font_size * 0.5)}" 
-        fill="${template.text_color}"
-        opacity="0.8"
-      >${escapeXml(demoData.profession)}</text>
+      ${demoData.profession ? `
+        <text 
+          x="${template.text_x}" 
+          y="${template.text_y + template.font_size * 2 + 20}" 
+          font-family="Arial, Helvetica, sans-serif" 
+          font-size="${Math.round(template.font_size * 0.5)}" 
+          fill="${template.text_color}"
+          opacity="0.8"
+        >${escapeXml(demoData.profession)}</text>
+      ` : ''}
     </svg>
   `;
 
   return (
     <div className="space-y-4">
-      <div className="aspect-video rounded-lg overflow-hidden border">
+      {/* Editable demo data */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Имя</Label>
+          <Input
+            value={demoData.name}
+            onChange={(e) => setDemoData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Имя"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Город</Label>
+          <Input
+            value={demoData.city}
+            onChange={(e) => setDemoData(prev => ({ ...prev, city: e.target.value }))}
+            placeholder="Город"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Возраст</Label>
+          <Input
+            type="number"
+            value={demoData.age}
+            onChange={(e) => setDemoData(prev => ({ ...prev, age: e.target.value }))}
+            placeholder="25"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Профессия</Label>
+          <Input
+            value={demoData.profession}
+            onChange={(e) => setDemoData(prev => ({ ...prev, profession: e.target.value }))}
+            placeholder="Профессия"
+          />
+        </div>
+      </div>
+
+      {/* SVG Preview */}
+      <div className="aspect-video rounded-lg overflow-hidden border bg-muted">
         <div dangerouslySetInnerHTML={{ __html: svgContent }} className="w-full h-full" />
       </div>
-      <div className="text-sm text-muted-foreground text-center">
-        Тестовая карточка с демо-данными
-      </div>
+      
       <div className="flex justify-end">
         <Button onClick={onClose}>Закрыть</Button>
       </div>
