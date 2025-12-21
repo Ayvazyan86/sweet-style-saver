@@ -22,19 +22,35 @@ interface ApplicationPayload {
   }
 }
 
-async function sendTelegramMessage(chatId: string, text: string) {
+interface InlineKeyboardButton {
+  text: string
+  url?: string
+  callback_data?: string
+}
+
+interface InlineKeyboard {
+  inline_keyboard: InlineKeyboardButton[][]
+}
+
+async function sendTelegramMessage(chatId: string, text: string, replyMarkup?: InlineKeyboard) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
+  
+  const body: Record<string, unknown> = {
+    chat_id: chatId,
+    text: text,
+    parse_mode: 'HTML',
+  }
+  
+  if (replyMarkup) {
+    body.reply_markup = replyMarkup
+  }
   
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: 'HTML',
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
@@ -78,12 +94,21 @@ Deno.serve(async (req) => {
 ${record.profession ? `💼 <b>Профессия:</b> ${record.profession}` : ''}
 ${record.city ? `📍 <b>Город:</b> ${record.city}` : ''}
 ${record.phone ? `📞 <b>Телефон:</b> ${record.phone}` : ''}
-
-🔗 <a href="https://style-keeper-hub.lovable.app/admin/applications">Перейти к модерации</a>
     `.trim()
 
-    await sendTelegramMessage(ADMIN_CHAT_ID, message)
-    console.log('Notification sent successfully')
+    const inlineKeyboard: InlineKeyboard = {
+      inline_keyboard: [
+        [
+          {
+            text: '📋 Перейти в админку',
+            url: 'https://style-keeper-hub.lovable.app/admin/applications'
+          }
+        ]
+      ]
+    }
+
+    await sendTelegramMessage(ADMIN_CHAT_ID, message, inlineKeyboard)
+    console.log('Notification sent successfully to admin via bot')
 
     return new Response(
       JSON.stringify({ success: true, message: 'Notification sent' }),
