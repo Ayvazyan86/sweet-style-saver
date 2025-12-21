@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Trash2, Star, Loader2, Move, Upload } from 'lucide-react';
+import { Plus, Trash2, Star, Loader2, Move, Upload, Check, Eye } from 'lucide-react';
 import { Canvas as FabricCanvas, FabricText, FabricImage } from 'fabric';
 
 interface CardTemplate {
@@ -48,16 +48,22 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
   const [textX, setTextX] = useState(initialData?.text_x || 50);
   const [textY, setTextY] = useState(initialData?.text_y || 314);
   const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const textRef = useRef<FabricText | null>(null);
+
+  // Canvas display dimensions (scaled down from 800x450)
+  const CANVAS_WIDTH = 600;
+  const CANVAS_HEIGHT = 338; // 800:450 ratio
+  const SCALE = CANVAS_WIDTH / 800;
 
   // Initialize canvas
   useEffect(() => {
     if (!canvasRef.current) return;
 
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: 600,
-      height: 314,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
       backgroundColor: '#1a1a2e',
     });
 
@@ -76,9 +82,9 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
     
     FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' })
       .then((img) => {
-        // Scale image to fit canvas (1200x628 -> 600x314)
-        const scaleX = 600 / (img.width || 1200);
-        const scaleY = 314 / (img.height || 628);
+        // Scale image to fit canvas (800x450 -> 600x338)
+        const scaleX = CANVAS_WIDTH / (img.width || 800);
+        const scaleY = CANVAS_HEIGHT / (img.height || 450);
         img.scale(Math.min(scaleX, scaleY));
         
         fabricCanvas.backgroundImage = img;
@@ -104,9 +110,9 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
     }
 
     const text = new FabricText('Имя Партнёра\nПрофессия\nГород', {
-      left: textX / 2, // Scale from 1200 to 600
-      top: textY / 2, // Scale from 628 to 314
-      fontSize: fontSize / 2, // Scale font size
+      left: textX * SCALE,
+      top: textY * SCALE,
+      fontSize: fontSize * SCALE,
       fill: textColor,
       fontFamily: 'Arial',
       fontWeight: 'bold',
@@ -115,8 +121,8 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
     });
 
     text.on('moving', () => {
-      setTextX(Math.round((text.left || 0) * 2));
-      setTextY(Math.round((text.top || 0) * 2));
+      setTextX(Math.round((text.left || 0) / SCALE));
+      setTextY(Math.round((text.top || 0) / SCALE));
     });
 
     fabricCanvas.add(text);
@@ -131,19 +137,37 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
 
     textRef.current.set({
       fill: textColor,
-      fontSize: fontSize / 2,
+      fontSize: fontSize * SCALE,
     });
     fabricCanvas.renderAll();
   }, [textColor, fontSize, fabricCanvas]);
 
-  // Handle file upload
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Validate image dimensions
+  const validateImageDimensions = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        if (img.width === 800 && img.height === 450) {
+          resolve(true);
+        } else {
+          toast.error(`Размер изображения должен быть 800×450 пикселей. Текущий: ${img.width}×${img.height}`);
+          resolve(false);
+        }
+      };
+      img.onerror = () => {
+        toast.error('Ошибка чтения изображения');
+        resolve(false);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
 
+  // Upload file to storage
+  const uploadFile = async (file: File) => {
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Пожалуйста, загрузите изображение');
+    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+      toast.error('Допустимы только PNG и JPEG изображения');
       return;
     }
 
@@ -153,10 +177,14 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
       return;
     }
 
+    // Validate dimensions
+    const isValidSize = await validateImageDimensions(file);
+    if (!isValidSize) return;
+
     setUploading(true);
 
     try {
-      const fileName = `templates/${Date.now()}-${file.name}`;
+      const fileName = `templates/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       
       const { error: uploadError } = await supabase.storage
         .from('partner-photos')
@@ -179,6 +207,36 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
     } finally {
       setUploading(false);
     }
+  };
+
+  // Handle file upload from input
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
+  // Handle drag and drop
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await uploadFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
   };
 
   const handleSave = () => {
@@ -230,31 +288,61 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Размер шрифта: {fontSize}px</Label>
+      <div className="space-y-2">
+        <Label>Размер шрифта: {fontSize}px</Label>
+        <input
+          type="range"
+          min="24"
+          max="72"
+          value={fontSize}
+          onChange={(e) => setFontSize(Number(e.target.value))}
+          className="w-full"
+        />
+      </div>
+
+      {/* Drag and drop zone */}
+      <div className="space-y-2">
+        <Label>Загрузить фон (800×450, PNG/JPEG)</Label>
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`
+            relative border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer
+            ${dragActive 
+              ? 'border-primary bg-primary/5' 
+              : 'border-muted-foreground/25 hover:border-primary/50'
+            }
+          `}
+        >
           <input
-            type="range"
-            min="24"
-            max="72"
-            value={fontSize}
-            onChange={(e) => setFontSize(Number(e.target.value))}
-            className="w-full"
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
-        </div>
-        <div className="space-y-2">
-          <Label>Загрузить фон (1200×628)</Label>
-          <div className="flex gap-2">
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              disabled={uploading}
-              className="cursor-pointer"
-            />
-            {uploading && <Loader2 className="w-5 h-5 animate-spin" />}
+          <div className="flex flex-col items-center gap-2 text-center">
+            {uploading ? (
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            ) : (
+              <Upload className="w-8 h-8 text-muted-foreground" />
+            )}
+            <div className="text-sm">
+              <span className="font-medium text-primary">Нажмите для выбора</span>
+              <span className="text-muted-foreground"> или перетащите файл</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              PNG или JPEG, строго 800×450 пикселей
+            </p>
           </div>
         </div>
+        {imageUrl && (
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <Check className="w-4 h-4" />
+            <span>Изображение загружено</span>
+          </div>
+        )}
       </div>
 
       {/* Canvas preview */}
@@ -283,10 +371,86 @@ function TemplateEditor({ onSave, onCancel, initialData }: TemplateEditorProps) 
   );
 }
 
+// SVG Preview component for test card
+function TestCardPreview({ template, onClose }: { template: CardTemplate; onClose: () => void }) {
+  const demoData = {
+    name: 'Иван Петров',
+    city: 'Москва',
+    age: 35,
+    profession: 'Риэлтор',
+  };
+
+  const escapeXml = (text: string) => {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  };
+
+  const locationAge = [demoData.city, `${demoData.age} лет`].filter(Boolean).join(', ');
+
+  const svgContent = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
+      <image href="${template.image_url}" x="0" y="0" width="800" height="450" preserveAspectRatio="xMidYMid slice"/>
+      
+      <!-- Demo photo placeholder -->
+      <circle cx="120" cy="225" r="80" fill="#374151" />
+      <text x="120" y="240" text-anchor="middle" fill="#9CA3AF" font-size="48" font-family="Arial, sans-serif">${demoData.name.charAt(0)}</text>
+      
+      <!-- Name -->
+      <text 
+        x="${template.text_x}" 
+        y="${template.text_y}" 
+        font-family="Arial, Helvetica, sans-serif" 
+        font-size="${template.font_size}" 
+        font-weight="bold" 
+        fill="${template.text_color}"
+      >${escapeXml(demoData.name)}</text>
+      
+      <!-- Location and age -->
+      <text 
+        x="${template.text_x}" 
+        y="${template.text_y + template.font_size + 10}" 
+        font-family="Arial, Helvetica, sans-serif" 
+        font-size="${Math.round(template.font_size * 0.6)}" 
+        fill="${template.text_color}"
+        opacity="0.9"
+      >${escapeXml(locationAge)}</text>
+      
+      <!-- Profession -->
+      <text 
+        x="${template.text_x}" 
+        y="${template.text_y + template.font_size * 2 + 20}" 
+        font-family="Arial, Helvetica, sans-serif" 
+        font-size="${Math.round(template.font_size * 0.5)}" 
+        fill="${template.text_color}"
+        opacity="0.8"
+      >${escapeXml(demoData.profession)}</text>
+    </svg>
+  `;
+
+  return (
+    <div className="space-y-4">
+      <div className="aspect-video rounded-lg overflow-hidden border">
+        <div dangerouslySetInnerHTML={{ __html: svgContent }} className="w-full h-full" />
+      </div>
+      <div className="text-sm text-muted-foreground text-center">
+        Тестовая карточка с демо-данными
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={onClose}>Закрыть</Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCardTemplates() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<CardTemplate | null>(null);
+  const [testPreviewTemplate, setTestPreviewTemplate] = useState<CardTemplate | null>(null);
 
   // Fetch templates
   const { data: templates, isLoading } = useQuery({
@@ -521,7 +685,15 @@ export default function AdminCardTemplates() {
                     />
                     <span className="text-sm text-muted-foreground">Активен</span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTestPreviewTemplate(template)}
+                      title="Тестовая карточка"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
                     {!template.is_default && template.is_active && (
                       <Button
                         variant="ghost"
@@ -570,6 +742,21 @@ export default function AdminCardTemplates() {
           ))}
         </div>
       )}
+
+      {/* Test Preview Dialog */}
+      <Dialog open={!!testPreviewTemplate} onOpenChange={(open) => !open && setTestPreviewTemplate(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Тестовая карточка: {testPreviewTemplate?.name}</DialogTitle>
+          </DialogHeader>
+          {testPreviewTemplate && (
+            <TestCardPreview 
+              template={testPreviewTemplate} 
+              onClose={() => setTestPreviewTemplate(null)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface CardTemplate {
+export interface CardTemplate {
   id: string;
   name: string;
   image_url: string;
   is_default: boolean;
+  text_x: number;
+  text_y: number;
+  text_color: string;
+  font_size: number;
 }
 
 interface TemplateSelectProps {
   value?: string;
-  onChange: (templateId: string) => void;
+  onChange: (templateId: string, template: CardTemplate | null) => void;
   error?: string;
 }
 
@@ -23,7 +27,7 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('card_templates')
-        .select('id, name, image_url, is_default')
+        .select('id, name, image_url, is_default, text_x, text_y, text_color, font_size')
         .eq('is_active', true)
         .order('is_default', { ascending: false });
 
@@ -33,14 +37,14 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
   });
 
   // Auto-select default template if no value
-  useState(() => {
+  useEffect(() => {
     if (!value && templates?.length) {
       const defaultTemplate = templates.find(t => t.is_default) || templates[0];
       if (defaultTemplate) {
-        onChange(defaultTemplate.id);
+        onChange(defaultTemplate.id, defaultTemplate);
       }
     }
-  });
+  }, [templates, value, onChange]);
 
   if (isLoading) {
     return (
@@ -51,7 +55,11 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
   }
 
   if (!templates?.length) {
-    return null; // No templates available, skip this step
+    return (
+      <div className="py-4 text-center text-muted-foreground text-sm">
+        Нет доступных шаблонов
+      </div>
+    );
   }
 
   return (
@@ -69,7 +77,7 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
             <button
               key={template.id}
               type="button"
-              onClick={() => onChange(template.id)}
+              onClick={() => onChange(template.id, template)}
               className={cn(
                 'relative aspect-video rounded-lg overflow-hidden border-2 transition-all',
                 isSelected
