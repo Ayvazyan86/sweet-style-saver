@@ -38,7 +38,9 @@ import {
   FileText,
   Users,
   ShoppingCart,
-  HelpCircle
+  HelpCircle,
+  Send,
+  Save
 } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -60,10 +62,14 @@ export default function AdminSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-card border border-border">
+        <TabsList className="bg-card border border-border flex-wrap h-auto">
           <TabsTrigger value="categories" className="data-[state=active]:bg-primary/10">
             <Tag className="h-4 w-4 mr-2" />
             Категории
+          </TabsTrigger>
+          <TabsTrigger value="telegram" className="data-[state=active]:bg-primary/10">
+            <Send className="h-4 w-4 mr-2" />
+            Telegram
           </TabsTrigger>
           <TabsTrigger value="partner-form" className="data-[state=active]:bg-primary/10">
             <Users className="h-4 w-4 mr-2" />
@@ -81,6 +87,10 @@ export default function AdminSettings() {
 
         <TabsContent value="categories">
           <CategoriesSettings />
+        </TabsContent>
+
+        <TabsContent value="telegram">
+          <TelegramSettings />
         </TabsContent>
 
         <TabsContent value="partner-form">
@@ -680,6 +690,204 @@ function QuestionFormSettings() {
         <p className="text-sm text-muted-foreground mt-4">
           Поля формы вопросов настраиваются на уровне кода.
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========== Telegram Settings ==========
+function TelegramSettings() {
+  const queryClient = useQueryClient();
+  const [channelId, setChannelId] = useState('');
+  const [discussionChatId, setDiscussionChatId] = useState('');
+  const [adminChatId, setAdminChatId] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['telegram-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .in('key', ['telegram_channel_id', 'telegram_discussion_chat_id', 'telegram_admin_chat_id']);
+      
+      if (error) throw error;
+      
+      const result: Record<string, string> = {};
+      data?.forEach(item => {
+        result[item.key] = item.value;
+      });
+      return result;
+    },
+    
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updates: { key: string; value: string }[]) => {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('settings')
+          .update({ value: update.value })
+          .eq('key', update.key);
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['telegram-settings'] });
+      toast.success('Настройки Telegram сохранены');
+      setIsEditing(false);
+    },
+    onError: (error) => {
+      toast.error('Ошибка сохранения', { description: error.message });
+    },
+  });
+
+  const handleEdit = () => {
+    setChannelId(settings?.telegram_channel_id || '');
+    setDiscussionChatId(settings?.telegram_discussion_chat_id || '');
+    setAdminChatId(settings?.telegram_admin_chat_id || '');
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate([
+      { key: 'telegram_channel_id', value: channelId },
+      { key: 'telegram_discussion_chat_id', value: discussionChatId },
+      { key: 'telegram_admin_chat_id', value: adminChatId },
+    ]);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Настройки Telegram
+          </CardTitle>
+          <CardDescription>
+            Настройки бота и каналов для уведомлений
+          </CardDescription>
+        </div>
+        {!isEditing && (
+          <Button onClick={handleEdit} variant="outline">
+            <Pencil className="h-4 w-4 mr-2" />
+            Редактировать
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="bg-muted/50 rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">
+            <strong>Токен бота</strong> хранится в защищённых переменных окружения и не может быть изменён через интерфейс.
+            Для изменения токена обратитесь к разработчику.
+          </p>
+        </div>
+
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="channel-id">ID канала для публикации партнёров</Label>
+              <Input
+                id="channel-id"
+                value={channelId}
+                onChange={(e) => setChannelId(e.target.value)}
+                placeholder="Например: -1001234567890"
+                className="bg-input border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                ID канала начинается с -100. Получите его через @userinfobot в канале.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="discussion-chat-id">ID чата обсуждений</Label>
+              <Input
+                id="discussion-chat-id"
+                value={discussionChatId}
+                onChange={(e) => setDiscussionChatId(e.target.value)}
+                placeholder="Например: -1001234567890"
+                className="bg-input border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                Чат, связанный с каналом для комментариев к постам партнёров.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="admin-chat-id">ID администратора для уведомлений</Label>
+              <Input
+                id="admin-chat-id"
+                value={adminChatId}
+                onChange={(e) => setAdminChatId(e.target.value)}
+                placeholder="Например: 264133466"
+                className="bg-input border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ваш личный chat_id для получения уведомлений о новых заявках.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+                className="bg-gradient-primary"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Сохранить
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditing(false)}>
+                Отмена
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30">
+              <div>
+                <p className="font-medium text-foreground">ID канала</p>
+                <p className="text-sm text-muted-foreground">Для публикации партнёров</p>
+              </div>
+              <code className="text-sm bg-muted px-2 py-1 rounded">
+                {settings?.telegram_channel_id || 'Не указан'}
+              </code>
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30">
+              <div>
+                <p className="font-medium text-foreground">ID чата обсуждений</p>
+                <p className="text-sm text-muted-foreground">Для комментариев</p>
+              </div>
+              <code className="text-sm bg-muted px-2 py-1 rounded">
+                {settings?.telegram_discussion_chat_id || 'Не указан'}
+              </code>
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30">
+              <div>
+                <p className="font-medium text-foreground">ID администратора</p>
+                <p className="text-sm text-muted-foreground">Для уведомлений</p>
+              </div>
+              <code className="text-sm bg-muted px-2 py-1 rounded">
+                {settings?.telegram_admin_chat_id || 'Не указан'}
+              </code>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

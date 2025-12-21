@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Edit, Save, X, Info } from 'lucide-react';
+import { Bell, Edit, Save, X, Info, Send, Loader2 } from 'lucide-react';
 
 interface NotificationTemplate {
   id: string;
@@ -27,7 +27,7 @@ export default function AdminNotifications() {
   const [editedTemplate, setEditedTemplate] = useState('');
   const [editedName, setEditedName] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
-
+  const [testingTemplate, setTestingTemplate] = useState<string | null>(null);
   const { data: templates, isLoading } = useQuery({
     queryKey: ['notification-templates'],
     queryFn: async () => {
@@ -67,11 +67,42 @@ export default function AdminNotifications() {
     }
   });
 
+  const testMutation = useMutation({
+    mutationFn: async ({ templateKey, template }: { templateKey: string; template: string }) => {
+      const { data, error } = await supabase.functions.invoke('test-notification', {
+        body: { templateKey, template }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Тестовое сообщение отправлено',
+        description: 'Проверьте Telegram',
+      });
+      setTestingTemplate(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Ошибка отправки',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setTestingTemplate(null);
+    }
+  });
+
   const handleEdit = (template: NotificationTemplate) => {
     setEditingTemplate(template);
     setEditedName(template.name);
     setEditedTemplate(template.template);
     setEditedDescription(template.description || '');
+  };
+
+  const handleTest = (template: NotificationTemplate) => {
+    setTestingTemplate(template.key);
+    testMutation.mutate({ templateKey: template.key, template: template.template });
   };
 
   const handleSave = () => {
@@ -137,10 +168,25 @@ export default function AdminNotifications() {
                   <CardTitle className="text-lg">{template.name}</CardTitle>
                   <CardDescription>{template.description}</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
-                  <Edit className="h-4 w-4 mr-1" />
-                  Редактировать
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleTest(template)}
+                    disabled={testingTemplate === template.key}
+                  >
+                    {testingTemplate === template.key ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-1" />
+                    )}
+                    Тест
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
+                    <Edit className="h-4 w-4 mr-1" />
+                    Редактировать
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

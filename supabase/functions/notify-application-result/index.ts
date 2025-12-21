@@ -6,6 +6,8 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
 interface ModerationPayload {
   type: 'UPDATE'
@@ -21,6 +23,22 @@ interface ModerationPayload {
     status: string
     rejection_reason?: string
   }
+}
+
+function replaceVariables(template: string, data: Record<string, string>): string {
+  let result = template
+  
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
+  }
+  
+  // Remove any remaining variables with _line suffix that weren't replaced
+  result = result.replace(/\{[a-z_]+_line\}/g, '')
+  
+  // Clean up multiple empty lines
+  result = result.replace(/\n{3,}/g, '\n\n')
+  
+  return result.trim()
 }
 
 async function sendTelegramMessage(chatId: string | number, text: string) {
@@ -78,6 +96,10 @@ Deno.serve(async (req) => {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
     }
 
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Supabase credentials are not configured')
+    }
+
     const payload: ModerationPayload = await req.json()
     console.log('Received payload:', JSON.stringify(payload))
 
@@ -100,12 +122,9 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get user's telegram_id from profiles
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+    // Get user's telegram_id from profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('telegram_id')
@@ -125,7 +144,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Format message based on status
+    // Get notification templates from database
+    const templateKey = newStatus === 'approved' ? 'application_approved' : 'application_rejected'
+    const { data: templateData } = await supabase
+      .from('notification_templates')
+      .select('template')
+      .eq('key', templateKey)
+      .single()
+
     let message: string
     
     if (newStatus === 'approved') {
@@ -170,6 +196,10 @@ Deno.serve(async (req) => {
             tg_channel: application.tg_channel,
             website: application.website,
             youtube: application.youtube,
+            rutube: application.rutube,
+            dzen: application.dzen,
+            vk_video: application.vk_video,
+            tg_video: application.tg_video,
             office_address: application.office_address,
             status: 'active',
             partner_type: 'free',
@@ -205,7 +235,7 @@ Deno.serve(async (req) => {
       // Публикуем карточку на канале
       try {
         await publishPartnerToChannel(
-          Deno.env.get('SUPABASE_URL') ?? '',
+          SUPABASE_URL,
           Deno.env.get('SUPABASE_ANON_KEY') ?? '',
           partnerProfileId
         )
@@ -215,7 +245,14 @@ Deno.serve(async (req) => {
         // Продолжаем даже если публикация не удалась
       }
 
-      message = `
+      // Use template from database or fallback
+      if (templateData?.template) {
+        const variables: Record<string, string> = {
+          name: payload.record.name,
+        }
+        message = replaceVariables(templateData.template, variables)
+      } else {
+        message = `
 ✅ <b>Ваша заявка одобрена!</b>
 
 Поздравляем, ${payload.record.name}! Ваша заявка на партнёрство успешно прошла модерацию.
@@ -223,9 +260,20 @@ Deno.serve(async (req) => {
 Ваша карточка опубликована на канале. Теперь вы можете получать заказы и вопросы от клиентов.
 
 Добро пожаловать в команду! 🎉
-      `.trim()
+        `.trim()
+      }
     } else {
-      message = `
+      // Use template from database or fallback
+      if (templateData?.template) {
+        const variables: Record<string, string> = {
+          name: payload.record.name,
+          rejection_reason_line: payload.record.rejection_reason 
+            ? `<b>Причина:</b> ${payload.record.rejection_reason}` 
+            : '',
+        }
+        message = replaceVariables(templateData.template, variables)
+      } else {
+        message = `
 ❌ <b>Ваша заявка отклонена</b>
 
 К сожалению, ${payload.record.name}, ваша заявка на партнёрство не прошла модерацию.
@@ -233,7 +281,8 @@ Deno.serve(async (req) => {
 ${payload.record.rejection_reason ? `<b>Причина:</b> ${payload.record.rejection_reason}` : ''}
 
 Вы можете подать новую заявку, исправив указанные замечания.
-      `.trim()
+        `.trim()
+      }
     }
 
     await sendTelegramMessage(profile.telegram_id, message)

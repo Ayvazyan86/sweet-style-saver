@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.geocode-city]
 verify_jwt = false
+
+[functions.test-notification]
+verify_jwt = false
