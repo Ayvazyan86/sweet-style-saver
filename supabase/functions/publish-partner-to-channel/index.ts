@@ -6,7 +6,6 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
 
 interface PublishRequest {
   partner_profile_id: string
@@ -31,109 +30,49 @@ interface PartnerData {
   vk_video?: string | null
   tg_video?: string | null
   categories?: { name: string }[]
+  card_template_id?: string | null
 }
 
-async function generateCardImage(partner: PartnerData): Promise<string | null> {
-  if (!LOVABLE_API_KEY) {
-    console.log('LOVABLE_API_KEY not configured, skipping card generation')
-    return null
-  }
-
-  try {
-    const locationAge = [partner.city, partner.age ? `${partner.age} лет` : null]
-      .filter(Boolean)
-      .join('. ')
-
-    const prompt = `Generate a professional business card image with elegant teal and silver wave design background.
-
-Layout:
-- LEFT SIDE (dark teal area):
-  - Circular avatar placeholder (grey circle with person icon silhouette) positioned in upper-left
-  - Below avatar: Name "${partner.name}" in large white bold elegant font
-  - Below name: "${locationAge || 'Россия'}" in smaller white text
-
-- RIGHT SIDE (silver metallic curved area):
-  ${partner.agency_name ? `- Label "Агентство:" in small grey text, below it "${partner.agency_name}" in teal (#00897B) bold text` : ''}
-  ${partner.profession ? `- Label "Профессия:" in small grey text, below it "${partner.profession}" in teal (#00897B) text` : ''}
-  ${partner.office_address ? `- Label "Офис:" in small grey text, below it "${partner.office_address}" in teal (#00897B) text` : ''}
-
-Design requirements:
-- Background: flowing teal (#0d4d4d) to dark teal gradient with elegant silver metallic wave accent on right side
-- Modern, premium, corporate look
-- Clean readable white text on dark areas
-- Teal text on silver areas
-- Aspect ratio: 16:9 (1024x576px)
-- NO extra decorations, just clean professional design`
-
-    console.log('Generating card with AI...')
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        modalities: ['image', 'text']
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('AI Gateway error:', error)
-      return null
-    }
-
-    const data = await response.json()
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url
-
-    if (!imageUrl) {
-      console.error('No image in AI response')
-      return null
-    }
-
-    console.log('Card image generated successfully')
-    return imageUrl
-  } catch (error) {
-    console.error('Error generating card:', error)
-    return null
-  }
+interface CardTemplate {
+  id: string
+  image_url: string
+  text_x: number
+  text_y: number
+  text_color: string
+  font_size: number
 }
 
-async function uploadImageToStorage(
-  supabase: any,
-  base64Image: string,
-  partnerId: string
-): Promise<string> {
-  const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '')
-  const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
-
-  const fileName = `cards/${partnerId}-${Date.now()}.png`
-
-  const { error } = await supabase.storage
-    .from('partner-photos')
-    .upload(fileName, imageBuffer, {
-      contentType: 'image/png',
-      upsert: true
-    })
-
-  if (error) {
-    console.error('Storage upload error:', error)
-    throw new Error(`Storage upload error: ${error.message}`)
+async function getCardTemplate(supabase: any, templateId: string | null): Promise<CardTemplate | null> {
+  // Try to get specific template
+  if (templateId) {
+    const { data } = await supabase
+      .from('card_templates')
+      .select('*')
+      .eq('id', templateId)
+      .eq('is_active', true)
+      .single()
+    if (data) return data
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('partner-photos')
-    .getPublicUrl(fileName)
+  // Fallback to default template
+  const { data: defaultTemplate } = await supabase
+    .from('card_templates')
+    .select('*')
+    .eq('is_default', true)
+    .eq('is_active', true)
+    .single()
+  
+  if (defaultTemplate) return defaultTemplate
 
-  return publicUrl
+  // Fallback to any active template
+  const { data: anyTemplate } = await supabase
+    .from('card_templates')
+    .select('*')
+    .eq('is_active', true)
+    .limit(1)
+    .single()
+
+  return anyTemplate || null
 }
 
 async function sendPhotoToChannel(chatId: string | number, photoUrl: string, caption: string) {
@@ -188,18 +127,37 @@ async function sendMessageToChannel(chatId: string | number, text: string) {
 function formatPartnerCaption(partner: PartnerData) {
   let message = ''
   
+  // Header with name and info
+  message += `<b>${partner.name}</b>\n`
+  
+  const info: string[] = []
+  if (partner.profession) info.push(partner.profession)
+  if (partner.city) info.push(`📍 ${partner.city}`)
+  if (partner.age) info.push(`${partner.age} лет`)
+  
+  if (info.length > 0) {
+    message += info.join(' • ') + '\n\n'
+  } else {
+    message += '\n'
+  }
+  
+  // Agency info
+  if (partner.agency_name) {
+    message += `🏢 <b>${partner.agency_name}</b>\n`
+  }
+  
   // Секция "Об агентстве"
   if (partner.agency_description) {
-    message += `<b>Об агентстве:</b>\n「 ${partner.agency_description} 」\n\n`
+    message += `\n<b>Об агентстве:</b>\n「 ${partner.agency_description} 」\n`
   }
   
   // Секция "О себе"
   if (partner.self_description) {
-    message += `<b>О себе:</b>\n「 ${partner.self_description} 」\n\n`
+    message += `\n<b>О себе:</b>\n「 ${partner.self_description} 」\n`
   }
   
   // Контакты
-  message += '<b>Контакты:</b>\n'
+  message += '\n<b>Контакты:</b>\n'
   
   if (partner.phone) {
     message += `📞 ${partner.phone}\n`
@@ -236,7 +194,7 @@ function formatPartnerCaption(partner: PartnerData) {
   }
   
   if (links.length > 0) {
-    message += links.join(' ')
+    message += links.join(' | ')
   }
   
   return message.trim()
@@ -338,27 +296,17 @@ Deno.serve(async (req) => {
       categories
     }
 
-    // Генерируем визуальную карточку через AI
-    console.log('Generating partner card image...')
-    const cardImageBase64 = await generateCardImage(partnerData)
-    
-    let cardImageUrl: string | null = null
-    if (cardImageBase64) {
-      try {
-        cardImageUrl = await uploadImageToStorage(supabase, cardImageBase64, partner_profile_id)
-        console.log('Card uploaded to storage:', cardImageUrl)
-      } catch (uploadError) {
-        console.error('Failed to upload card:', uploadError)
-      }
-    }
+    // Получаем шаблон карточки
+    const template = await getCardTemplate(supabase, partner.card_template_id)
+    console.log('Using template:', template?.id || 'none')
 
     // Форматируем текстовый caption
     const caption = formatPartnerCaption(partnerData)
 
     let result: { result: { message_id: number } }
 
-    // Публикуем на канале - с карточкой или фото
-    const imageToSend = cardImageUrl || photoUrl
+    // Публикуем на канале - с шаблоном, фото или без
+    const imageToSend = template?.image_url || photoUrl
     
     if (imageToSend) {
       console.log('Publishing with image:', imageToSend)
@@ -385,7 +333,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         channel_post_id: channelPostId,
-        card_url: cardImageUrl 
+        template_used: template?.id || null
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

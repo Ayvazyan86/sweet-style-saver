@@ -19,6 +19,7 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminQuestions from "./pages/admin/AdminQuestions";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminCardTemplates from "./pages/admin/AdminCardTemplates";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="orders" element={<AdminOrders />} />
               <Route path="questions" element={<AdminQuestions />} />
               <Route path="notifications" element={<AdminNotifications />} />
+              <Route path="card-templates" element={<AdminCardTemplates />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
             
