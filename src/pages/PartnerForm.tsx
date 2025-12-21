@@ -10,7 +10,8 @@ import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
-import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye } from 'lucide-react';
+import { TemplateSelect } from '@/components/mini-app/TemplateSelect';
+import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ const STEPS = [
   { id: 1, title: 'Личные данные', icon: User },
   { id: 2, title: 'Деятельность', icon: Briefcase },
   { id: 3, title: 'Контакты', icon: Phone },
+  { id: 4, title: 'Шаблон', icon: Eye },
 ];
 
 export default function PartnerForm() {
@@ -30,6 +32,7 @@ export default function PartnerForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Загружаем категории для предпросмотра
@@ -259,7 +262,7 @@ export default function PartnerForm() {
   const nextStep = () => {
     if (validateStep(currentStep)) {
       hapticFeedback('light');
-      setCurrentStep(prev => Math.min(prev + 1, 3));
+      setCurrentStep(prev => Math.min(prev + 1, 4));
     } else {
       hapticFeedback('error');
     }
@@ -330,6 +333,7 @@ export default function PartnerForm() {
           tg_video: formData.tg_video || null,
           office_address: formData.office_address || null,
           photo_url: formData.photo_url || null,
+          card_template_id: selectedTemplateId || null,
         })
         .select('id')
         .single();
@@ -656,6 +660,43 @@ export default function PartnerForm() {
           </div>
         )}
 
+        {/* Step 4: Шаблон карточки */}
+        {currentStep === 4 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+                  <LayoutTemplate className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Выбор шаблона</h2>
+                  <p className="text-sm text-muted-foreground">Выберите дизайн вашей карточки</p>
+                </div>
+              </div>
+
+              <TemplateSelect
+                value={selectedTemplateId}
+                onChange={setSelectedTemplateId}
+              />
+            </GlassCard>
+
+            {/* Preview Card */}
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                <Eye className="w-4 h-4" />
+                <span className="text-sm font-medium">Так будет выглядеть ваша карточка</span>
+              </div>
+              <PartnerPreviewCard 
+                data={formData}
+                categories={selectedCategories.map(id => {
+                  const cat = categoriesData?.find(c => c.id === id);
+                  return { id, name: cat?.name || '' };
+                }).filter(c => c.name)}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Preview Card - only on step 3 */}
         {currentStep === 3 && (
           <div className="mt-6 animate-in fade-in duration-300">
@@ -685,7 +726,7 @@ export default function PartnerForm() {
             </button>
           )}
           
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <button
               type="button"
               onClick={nextStep}

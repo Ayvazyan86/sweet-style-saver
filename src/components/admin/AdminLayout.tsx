@@ -14,7 +14,8 @@ import {
   ShoppingCart,
   HelpCircle,
   Settings,
-  Bell
+  Bell,
+  LayoutTemplate
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/admin/orders', label: 'Заказы', icon: ShoppingCart },
   { href: '/admin/questions', label: 'Вопросы', icon: HelpCircle },
   { href: '/admin/notifications', label: 'Уведомления', icon: Bell },
+  { href: '/admin/card-templates', label: 'Шаблоны карточек', icon: LayoutTemplate },
   { href: '/admin/settings', label: 'Настройки', icon: Settings },
 ];
 
