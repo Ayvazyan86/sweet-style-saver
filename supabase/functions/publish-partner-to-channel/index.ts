@@ -6,8 +6,6 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const CHANNEL_ID = Deno.env.get('TELEGRAM_CHANNEL_ID')
-const DISCUSSION_CHAT_ID = Deno.env.get('TELEGRAM_DISCUSSION_CHAT_ID')
 
 interface PublishRequest {
   partner_profile_id: string
@@ -169,6 +167,25 @@ function formatPartnerMessage(partner: {
   return message
 }
 
+async function getSettings(supabase: any) {
+  const { data: settings, error } = await supabase
+    .from('settings')
+    .select('key, value')
+    .in('key', ['telegram_channel_id', 'telegram_discussion_chat_id'])
+
+  if (error) {
+    console.error('Error fetching settings:', error)
+    throw new Error('Failed to fetch settings')
+  }
+
+  const settingsMap: Record<string, string> = {}
+  settings?.forEach((s: { key: string; value: string }) => {
+    settingsMap[s.key] = s.value
+  })
+
+  return settingsMap
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -177,10 +194,6 @@ Deno.serve(async (req) => {
   try {
     if (!TELEGRAM_BOT_TOKEN) {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
-    }
-
-    if (!CHANNEL_ID) {
-      throw new Error('TELEGRAM_CHANNEL_ID is not configured')
     }
 
     const { partner_profile_id }: PublishRequest = await req.json()
@@ -194,6 +207,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // Получаем настройки из базы данных
+    const settings = await getSettings(supabase)
+    const channelId = settings['telegram_channel_id']
+
+    if (!channelId) {
+      throw new Error('telegram_channel_id is not configured in settings')
+    }
 
     // Получаем данные партнёра с заявкой (для фото)
     const { data: partner, error: partnerError } = await supabase
@@ -247,10 +268,10 @@ Deno.serve(async (req) => {
     // Публикуем на канале - с фото или без
     if (photoUrl) {
       console.log('Publishing with photo:', photoUrl)
-      result = await sendPhotoToChannel(CHANNEL_ID, photoUrl, messageText)
+      result = await sendPhotoToChannel(channelId, photoUrl, messageText)
     } else {
       console.log('Publishing without photo')
-      result = await sendMessageToChannel(CHANNEL_ID, messageText)
+      result = await sendMessageToChannel(channelId, messageText)
     }
 
     const channelPostId = result.result.message_id
