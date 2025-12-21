@@ -10,7 +10,8 @@ import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
-import { TemplateSelect } from '@/components/mini-app/TemplateSelect';
+import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
+import { TemplatePreviewCard } from '@/components/mini-app/TemplatePreviewCard';
 import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ export default function PartnerForm() {
   const [loading, setLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<CardTemplate | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Загружаем категории для предпросмотра
@@ -676,22 +678,29 @@ export default function PartnerForm() {
 
               <TemplateSelect
                 value={selectedTemplateId}
-                onChange={setSelectedTemplateId}
+                onChange={(templateId, template) => {
+                  setSelectedTemplateId(templateId);
+                  setSelectedTemplate(template);
+                }}
               />
             </GlassCard>
 
-            {/* Preview Card */}
+            {/* Template Preview Card */}
             <div className="mt-6">
               <div className="flex items-center gap-2 mb-3 text-muted-foreground">
                 <Eye className="w-4 h-4" />
-                <span className="text-sm font-medium">Так будет выглядеть ваша карточка</span>
+                <span className="text-sm font-medium">Предпросмотр карточки с выбранным шаблоном</span>
               </div>
-              <PartnerPreviewCard 
-                data={formData}
-                categories={selectedCategories.map(id => {
-                  const cat = categoriesData?.find(c => c.id === id);
-                  return { id, name: cat?.name || '' };
-                }).filter(c => c.name)}
+              <TemplatePreviewCard 
+                partnerData={{
+                  name: formData.name,
+                  age: formData.age,
+                  profession: formData.profession,
+                  city: formData.city,
+                  agency_name: formData.agency_name,
+                  photo_url: formData.photo_url,
+                }}
+                template={selectedTemplate}
               />
             </div>
           </div>
