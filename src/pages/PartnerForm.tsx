@@ -380,7 +380,7 @@ export default function PartnerForm() {
         </button>
         <div>
           <h1 className="text-xl font-bold text-foreground">{t('becomePartner')}</h1>
-          <p className="text-sm text-muted-foreground">Шаг {currentStep} из 3</p>
+          <p className="text-sm text-muted-foreground">Шаг {currentStep} из 4</p>
         </div>
       </div>
 
@@ -391,7 +391,7 @@ export default function PartnerForm() {
           <div className="absolute left-0 right-0 top-5 h-0.5 bg-card">
             <div 
               className="h-full bg-gradient-primary transition-all duration-500"
-              style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+              style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
             />
           </div>
           
