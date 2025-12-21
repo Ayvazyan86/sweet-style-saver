@@ -18,6 +18,7 @@ import AdminPartners from "./pages/admin/AdminPartners";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminQuestions from "./pages/admin/AdminQuestions";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminNotifications from "./pages/admin/AdminNotifications";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="partners" element={<AdminPartners />} />
               <Route path="orders" element={<AdminOrders />} />
               <Route path="questions" element={<AdminQuestions />} />
+              <Route path="notifications" element={<AdminNotifications />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
             
