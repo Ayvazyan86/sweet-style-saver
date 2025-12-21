@@ -6,7 +6,6 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const TELEGRAM_DISCUSSION_CHAT_ID = Deno.env.get('TELEGRAM_DISCUSSION_CHAT_ID')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -36,6 +35,22 @@ const PARTNER_TYPE_ORDER: Record<string, number> = {
   'star': 1,
   'paid': 2,
   'free': 3,
+}
+
+function replaceVariables(template: string, data: Record<string, string>): string {
+  let result = template
+  
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
+  }
+  
+  // Remove any remaining variables with _line suffix that weren't replaced
+  result = result.replace(/\{[a-z_]+_line\}/g, '')
+  
+  // Clean up multiple empty lines
+  result = result.replace(/\n{3,}/g, '\n\n')
+  
+  return result.trim()
 }
 
 async function sendTelegramMessage(chatId: string | number, text: string, replyToMessageId?: number) {
@@ -99,10 +114,6 @@ Deno.serve(async (req) => {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
     }
 
-    if (!TELEGRAM_DISCUSSION_CHAT_ID) {
-      throw new Error('TELEGRAM_DISCUSSION_CHAT_ID is not configured')
-    }
-
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Supabase credentials are not configured')
     }
@@ -119,6 +130,26 @@ Deno.serve(async (req) => {
 
     const { record } = payload
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+    // Get discussion chat ID from settings
+    const { data: discussionChatSetting } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'telegram_discussion_chat_id')
+      .single()
+
+    const discussionChatId = discussionChatSetting?.value || Deno.env.get('TELEGRAM_DISCUSSION_CHAT_ID')
+
+    if (!discussionChatId) {
+      throw new Error('TELEGRAM_DISCUSSION_CHAT_ID is not configured')
+    }
+
+    // Get notification template from database
+    const { data: templateData } = await supabase
+      .from('notification_templates')
+      .select('template')
+      .eq('key', 'new_question')
+      .single()
 
     // Получаем все категории вопроса
     const { data: questionCategories } = await supabase
@@ -155,7 +186,7 @@ Deno.serve(async (req) => {
     const partnerIds = [...new Set(partnerCategories.map(pc => pc.profile_id))]
     console.log('Found partner IDs:', partnerIds.length)
 
-    // Получаем ВСЕХ активных партнёров (включая без discussion_message_id для логирования ошибок)
+    // Получаем ВСЕХ активных партнёров
     const { data: allPartners } = await supabase
       .from('partner_profiles')
       .select('id, name, partner_type, discussion_message_id, channel_post_id')
@@ -180,7 +211,17 @@ Deno.serve(async (req) => {
     console.log('Sorted partners:', sortedPartners.map(p => `${p.name} (${p.partner_type})`))
 
     // Формируем сообщение для комментариев
-    const questionMessage = `
+    let questionMessage: string
+
+    if (templateData?.template) {
+      const variables: Record<string, string> = {
+        text: record.text,
+        category: category?.name || 'Не указана',
+        details_line: record.details ? `📝 <b>Детали:</b>\n${record.details}` : '',
+      }
+      questionMessage = replaceVariables(templateData.template, variables)
+    } else {
+      questionMessage = `
 ❓ <b>Новый вопрос!</b>
 
 📂 <b>Категория:</b> ${category?.name || 'Не указана'}
@@ -188,7 +229,8 @@ Deno.serve(async (req) => {
 ${record.text}
 
 ${record.details ? `\n📝 <b>Детали:</b>\n${record.details}` : ''}
-    `.trim()
+      `.trim()
+    }
 
     // Отправляем и записываем публикации
     let sentCount = 0
@@ -221,7 +263,7 @@ ${record.details ? `\n📝 <b>Детали:</b>\n${record.details}` : ''}
       }
 
       const result = await sendTelegramMessage(
-        TELEGRAM_DISCUSSION_CHAT_ID,
+        discussionChatId,
         questionMessage,
         partner.discussion_message_id
       )
@@ -264,7 +306,7 @@ ${record.details ? `\n📝 <b>Детали:</b>\n${record.details}` : ''}
         // Формируем ссылки на карточки партнёров
         const partnerLinks = successfulPartners
           .filter(p => p.channelPostId)
-          .map(p => `🔹 <a href="https://t.me/c/${TELEGRAM_DISCUSSION_CHAT_ID?.replace('-100', '')}/${p.channelPostId}">${p.name}</a>`)
+          .map(p => `🔹 <a href="https://t.me/c/${discussionChatId?.replace('-100', '')}/${p.channelPostId}">${p.name}</a>`)
           .join('\n')
 
         const userMessage = `
