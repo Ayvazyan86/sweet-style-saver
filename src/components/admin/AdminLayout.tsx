@@ -13,7 +13,8 @@ import {
   BarChart3,
   ShoppingCart,
   HelpCircle,
-  Settings
+  Settings,
+  Bell
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/admin/partners', label: 'Партнёры', icon: Users },
   { href: '/admin/orders', label: 'Заказы', icon: ShoppingCart },
   { href: '/admin/questions', label: 'Вопросы', icon: HelpCircle },
+  { href: '/admin/notifications', label: 'Уведомления', icon: Bell },
   { href: '/admin/settings', label: 'Настройки', icon: Settings },
 ];
 

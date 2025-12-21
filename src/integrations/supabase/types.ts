@@ -225,6 +225,36 @@ export type Database = {
           },
         ]
       }
+      notification_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          name: string
+          template: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          name: string
+          template: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          name?: string
+          template?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_categories: {
         Row: {
           category_id: string
