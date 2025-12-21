@@ -6,7 +6,6 @@ const corsHeaders = {
 }
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const CHANNEL_ID = Deno.env.get('ADMIN_TELEGRAM_CHAT_ID')
 
 interface UpdateRequest {
   partner_profile_id: string
@@ -49,6 +48,10 @@ function formatPartnerMessage(partner: {
   tg_channel?: string | null
   website?: string | null
   youtube?: string | null
+  rutube?: string | null
+  dzen?: string | null
+  vk_video?: string | null
+  tg_video?: string | null
   office_address?: string | null
   categories?: { name: string }[]
 }) {
@@ -103,8 +106,34 @@ function formatPartnerMessage(partner: {
     message += `🌐 <a href="${websiteUrl}">Сайт</a>\n`
   }
   
+  // Видеоплатформы
+  const videoLinks: string[] = []
+  
   if (partner.youtube) {
-    message += `▶️ <a href="${partner.youtube}">YouTube</a>\n`
+    videoLinks.push(`<a href="${partner.youtube}">YouTube</a>`)
+  }
+  
+  if (partner.rutube) {
+    videoLinks.push(`<a href="${partner.rutube}">Rutube</a>`)
+  }
+  
+  if (partner.dzen) {
+    videoLinks.push(`<a href="${partner.dzen}">Дзен</a>`)
+  }
+  
+  if (partner.vk_video) {
+    videoLinks.push(`<a href="${partner.vk_video}">VK Видео</a>`)
+  }
+  
+  if (partner.tg_video) {
+    const tgVideoLink = partner.tg_video.startsWith('@') 
+      ? `https://t.me/${partner.tg_video.slice(1)}`
+      : partner.tg_video
+    videoLinks.push(`<a href="${tgVideoLink}">TG Видео</a>`)
+  }
+  
+  if (videoLinks.length > 0) {
+    message += `▶️ ${videoLinks.join(' | ')}\n`
   }
   
   if (partner.office_address) {
@@ -112,6 +141,25 @@ function formatPartnerMessage(partner: {
   }
   
   return message
+}
+
+async function getSettings(supabase: any) {
+  const { data: settings, error } = await supabase
+    .from('settings')
+    .select('key, value')
+    .in('key', ['telegram_channel_id'])
+
+  if (error) {
+    console.error('Error fetching settings:', error)
+    throw new Error('Failed to fetch settings')
+  }
+
+  const settingsMap: Record<string, string> = {}
+  settings?.forEach((s: { key: string; value: string }) => {
+    settingsMap[s.key] = s.value
+  })
+
+  return settingsMap
 }
 
 Deno.serve(async (req) => {
@@ -122,10 +170,6 @@ Deno.serve(async (req) => {
   try {
     if (!TELEGRAM_BOT_TOKEN) {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
-    }
-
-    if (!CHANNEL_ID) {
-      throw new Error('ADMIN_TELEGRAM_CHAT_ID is not configured')
     }
 
     const { partner_profile_id }: UpdateRequest = await req.json()
@@ -139,6 +183,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // Получаем настройки из базы данных
+    const settings = await getSettings(supabase)
+    const channelId = settings['telegram_channel_id']
+
+    if (!channelId) {
+      throw new Error('telegram_channel_id is not configured in settings')
+    }
 
     // Получаем данные партнёра
     const { data: partner, error: partnerError } = await supabase
@@ -181,7 +233,7 @@ Deno.serve(async (req) => {
     })
 
     // Редактируем сообщение на канале
-    await editTelegramMessage(CHANNEL_ID, partner.channel_post_id, messageText)
+    await editTelegramMessage(channelId, partner.channel_post_id, messageText)
     console.log('Channel post updated successfully:', partner.channel_post_id)
 
     return new Response(
