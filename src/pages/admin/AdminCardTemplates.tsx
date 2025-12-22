@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Upload, X } from 'lucide-react';
+import { Plus, Upload, X, Move } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ElementPosition {
@@ -45,11 +45,11 @@ const GOOGLE_FONTS = [
 ];
 
 const DEFAULT_ELEMENTS: TemplateElements = {
-  avatar: { x: 59, y: 72, width: 699, height: 699 },
-  name: { x: 1453, y: 80, width: 447, height: 201 },
-  agency: { x: 1000, y: 439, width: 893, height: 259 },
-  profession: { x: 1185, y: 774, width: 708, height: 169 },
-  office: { x: 512, y: 1052, width: 1371, height: 69 },
+  avatar: { x: 59, y: 72, width: 200, height: 200 },
+  name: { x: 300, y: 80, width: 400, height: 60 },
+  agency: { x: 300, y: 160, width: 400, height: 50 },
+  profession: { x: 300, y: 230, width: 400, height: 40 },
+  office: { x: 300, y: 290, width: 400, height: 40 },
 };
 
 const DEMO_DATA = {
@@ -68,6 +68,19 @@ const ELEMENT_LABELS: Record<keyof TemplateElements, string> = {
   office: 'Офис',
 };
 
+const ELEMENT_COLORS: Record<keyof TemplateElements, string> = {
+  avatar: 'border-blue-500',
+  name: 'border-green-500',
+  agency: 'border-yellow-500',
+  profession: 'border-purple-500',
+  office: 'border-pink-500',
+};
+
+// Preview dimensions
+const PREVIEW_WIDTH = 600;
+const BANNER_WIDTH = 800;
+const BANNER_HEIGHT = 450;
+
 export default function AdminCardTemplates() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState<TemplateFormData>({
@@ -77,8 +90,14 @@ export default function AdminCardTemplates() {
     elements: DEFAULT_ELEMENTS,
   });
   const [uploading, setUploading] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<keyof TemplateElements | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
+  const scale = PREVIEW_WIDTH / BANNER_WIDTH;
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['card-templates'],
@@ -168,6 +187,7 @@ export default function AdminCardTemplates() {
       elements: DEFAULT_ELEMENTS,
     });
     setIsFormOpen(false);
+    setSelectedElement(null);
   };
 
   const handleSubmit = () => {
@@ -178,10 +198,106 @@ export default function AdminCardTemplates() {
     createMutation.mutate(formData);
   };
 
-  // Calculate scale for preview
-  const PREVIEW_WIDTH = 400;
-  const BANNER_WIDTH = 1920; // Assumed original banner width
-  const scale = PREVIEW_WIDTH / BANNER_WIDTH;
+  // Drag handlers
+  const handleMouseDown = useCallback((
+    e: React.MouseEvent,
+    elementKey: keyof TemplateElements,
+    isResize = false
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedElement(elementKey);
+    setIsDragging(!isResize);
+    setIsResizing(isResize);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!selectedElement || (!isDragging && !isResizing)) return;
+    if (!previewRef.current) return;
+
+    const deltaX = (e.clientX - dragStart.x) / scale;
+    const deltaY = (e.clientY - dragStart.y) / scale;
+
+    setFormData(prev => {
+      const element = prev.elements[selectedElement];
+      
+      if (isDragging) {
+        return {
+          ...prev,
+          elements: {
+            ...prev.elements,
+            [selectedElement]: {
+              ...element,
+              x: Math.max(0, Math.min(BANNER_WIDTH - element.width, element.x + deltaX)),
+              y: Math.max(0, Math.min(BANNER_HEIGHT - element.height, element.y + deltaY)),
+            },
+          },
+        };
+      } else if (isResizing) {
+        return {
+          ...prev,
+          elements: {
+            ...prev.elements,
+            [selectedElement]: {
+              ...element,
+              width: Math.max(50, element.width + deltaX),
+              height: Math.max(20, element.height + deltaY),
+            },
+          },
+        };
+      }
+      return prev;
+    });
+
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }, [selectedElement, isDragging, isResizing, dragStart, scale]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setIsResizing(false);
+  }, []);
+
+  const renderDraggableElement = (
+    key: keyof TemplateElements,
+    content: React.ReactNode,
+    isCircle = false
+  ) => {
+    const element = formData.elements[key];
+    const isSelected = selectedElement === key;
+
+    return (
+      <div
+        key={key}
+        className={`absolute cursor-move border-2 ${isSelected ? ELEMENT_COLORS[key] : 'border-transparent'} ${isSelected ? 'z-10' : 'z-0'} hover:border-white/50 transition-colors`}
+        style={{
+          left: element.x * scale,
+          top: element.y * scale,
+          width: element.width * scale,
+          height: element.height * scale,
+          borderRadius: isCircle ? '50%' : 4,
+        }}
+        onMouseDown={(e) => handleMouseDown(e, key)}
+      >
+        {content}
+        
+        {/* Resize handle */}
+        {isSelected && (
+          <div
+            className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-gray-400 cursor-se-resize rounded-sm"
+            onMouseDown={(e) => handleMouseDown(e, key, true)}
+          />
+        )}
+
+        {/* Label */}
+        {isSelected && (
+          <div className={`absolute -top-6 left-0 text-xs px-1 py-0.5 rounded text-white ${ELEMENT_COLORS[key].replace('border-', 'bg-')}`}>
+            {ELEMENT_LABELS[key]}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -202,7 +318,7 @@ export default function AdminCardTemplates() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex gap-6">
-              {/* Left side - Banner upload and font selection */}
+              {/* Left side - Banner upload and preview */}
               <div className="flex-1 space-y-4">
                 <div className="space-y-2">
                   <Label>Название шаблона</Label>
@@ -216,27 +332,11 @@ export default function AdminCardTemplates() {
                 {/* Banner upload area */}
                 <div className="space-y-2">
                   <Label>Баннер</Label>
-                  <div
-                    className="relative border-2 border-dashed border-muted-foreground/25 rounded-lg aspect-video flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden"
-                    style={{ minHeight: 200 }}
-                  >
-                    {formData.bannerUrl ? (
-                      <>
-                        <img
-                          src={formData.bannerUrl}
-                          alt="Banner preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2"
-                          onClick={() => setFormData(prev => ({ ...prev, bannerUrl: '' }))}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </>
-                    ) : (
+                  {!formData.bannerUrl ? (
+                    <div
+                      className="relative border-2 border-dashed border-muted-foreground/25 rounded-lg aspect-video flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                      style={{ minHeight: 200 }}
+                    >
                       <label className="flex flex-col items-center gap-2 cursor-pointer p-4">
                         <Upload className="w-8 h-8 text-muted-foreground" />
                         <span className="text-muted-foreground">
@@ -250,8 +350,115 @@ export default function AdminCardTemplates() {
                           disabled={uploading}
                         />
                       </label>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Move className="w-4 h-4" />
+                        <span>Перетаскивайте элементы на превью для изменения позиции</span>
+                      </div>
+                      
+                      {/* Interactive Preview */}
+                      <div
+                        ref={previewRef}
+                        className="relative border rounded-lg overflow-hidden bg-muted select-none"
+                        style={{ 
+                          width: PREVIEW_WIDTH, 
+                          height: (BANNER_HEIGHT / BANNER_WIDTH) * PREVIEW_WIDTH,
+                        }}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                      >
+                        <img
+                          src={formData.bannerUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover pointer-events-none"
+                          draggable={false}
+                        />
+
+                        {/* Avatar */}
+                        {renderDraggableElement(
+                          'avatar',
+                          <div className="w-full h-full rounded-full bg-gray-300 overflow-hidden">
+                            <img 
+                              src={DEMO_DATA.avatarUrl} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover pointer-events-none" 
+                              draggable={false}
+                            />
+                          </div>,
+                          true
+                        )}
+
+                        {/* Name */}
+                        {renderDraggableElement(
+                          'name',
+                          <div
+                            className="w-full h-full flex items-center text-white font-bold truncate pointer-events-none"
+                            style={{
+                              fontSize: Math.max(12, formData.elements.name.height * scale * 0.6),
+                              fontFamily: formData.fontFamily,
+                            }}
+                          >
+                            {DEMO_DATA.name}
+                          </div>
+                        )}
+
+                        {/* Agency */}
+                        {renderDraggableElement(
+                          'agency',
+                          <div
+                            className="w-full h-full flex items-center text-white truncate pointer-events-none"
+                            style={{
+                              fontSize: Math.max(10, formData.elements.agency.height * scale * 0.5),
+                              fontFamily: formData.fontFamily,
+                            }}
+                          >
+                            {DEMO_DATA.agency}
+                          </div>
+                        )}
+
+                        {/* Profession */}
+                        {renderDraggableElement(
+                          'profession',
+                          <div
+                            className="w-full h-full flex items-center text-white truncate pointer-events-none"
+                            style={{
+                              fontSize: Math.max(10, formData.elements.profession.height * scale * 0.5),
+                              fontFamily: formData.fontFamily,
+                            }}
+                          >
+                            {DEMO_DATA.profession}
+                          </div>
+                        )}
+
+                        {/* Office */}
+                        {renderDraggableElement(
+                          'office',
+                          <div
+                            className="w-full h-full flex items-center text-white truncate pointer-events-none"
+                            style={{
+                              fontSize: Math.max(8, formData.elements.office.height * scale * 0.5),
+                              fontFamily: formData.fontFamily,
+                            }}
+                          >
+                            {DEMO_DATA.office}
+                          </div>
+                        )}
+
+                        {/* Remove banner button */}
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 z-20"
+                          onClick={() => setFormData(prev => ({ ...prev, bannerUrl: '' }))}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Font selection */}
@@ -276,134 +483,56 @@ export default function AdminCardTemplates() {
               </div>
 
               {/* Right side - Element coordinates */}
-              <div className="flex-1 space-y-4">
+              <div className="w-80 space-y-4">
                 <div className="space-y-2">
                   <Label className="text-base font-semibold">Координаты элементов</Label>
                   <p className="text-sm text-muted-foreground">x, y, width, height</p>
                 </div>
 
                 {(Object.keys(formData.elements) as Array<keyof TemplateElements>).map((key) => (
-                  <div key={key} className="space-y-1">
-                    <Label className="text-sm">{ELEMENT_LABELS[key]}</Label>
+                  <div 
+                    key={key} 
+                    className={`space-y-1 p-2 rounded-lg transition-colors cursor-pointer ${selectedElement === key ? 'bg-muted' : 'hover:bg-muted/50'}`}
+                    onClick={() => setSelectedElement(key)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${ELEMENT_COLORS[key].replace('border-', 'bg-')}`} />
+                      <Label className="text-sm cursor-pointer">{ELEMENT_LABELS[key]}</Label>
+                    </div>
                     <div className="grid grid-cols-4 gap-2">
                       <Input
                         type="number"
-                        value={formData.elements[key].x}
+                        value={Math.round(formData.elements[key].x)}
                         onChange={(e) => updateElement(key, 'x', Number(e.target.value))}
                         placeholder="x"
+                        className="text-xs h-8"
                       />
                       <Input
                         type="number"
-                        value={formData.elements[key].y}
+                        value={Math.round(formData.elements[key].y)}
                         onChange={(e) => updateElement(key, 'y', Number(e.target.value))}
                         placeholder="y"
+                        className="text-xs h-8"
                       />
                       <Input
                         type="number"
-                        value={formData.elements[key].width}
+                        value={Math.round(formData.elements[key].width)}
                         onChange={(e) => updateElement(key, 'width', Number(e.target.value))}
                         placeholder="w"
+                        className="text-xs h-8"
                       />
                       <Input
                         type="number"
-                        value={formData.elements[key].height}
+                        value={Math.round(formData.elements[key].height)}
                         onChange={(e) => updateElement(key, 'height', Number(e.target.value))}
                         placeholder="h"
+                        className="text-xs h-8"
                       />
                     </div>
                   </div>
                 ))}
-
-                <p className="text-xs text-muted-foreground mt-4">
-                  Добавьте разметку здесь
-                </p>
               </div>
             </div>
-
-            {/* Live Preview */}
-            {formData.bannerUrl && (
-              <div className="mt-6 space-y-2">
-                <Label className="text-base font-semibold">Превью карточки</Label>
-                <div
-                  className="relative border rounded-lg overflow-hidden bg-muted"
-                  style={{ width: PREVIEW_WIDTH, aspectRatio: '16/9' }}
-                >
-                  <img
-                    src={formData.bannerUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Avatar */}
-                  <div
-                    className="absolute rounded-full bg-gray-300 overflow-hidden border-2 border-white"
-                    style={{
-                      left: formData.elements.avatar.x * scale,
-                      top: formData.elements.avatar.y * scale,
-                      width: formData.elements.avatar.width * scale,
-                      height: formData.elements.avatar.height * scale,
-                    }}
-                  >
-                    <img src={DEMO_DATA.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
-                  {/* Name */}
-                  <div
-                    className="absolute text-white font-bold truncate"
-                    style={{
-                      left: formData.elements.name.x * scale,
-                      top: formData.elements.name.y * scale,
-                      width: formData.elements.name.width * scale,
-                      height: formData.elements.name.height * scale,
-                      fontSize: 14 * scale * 3,
-                      fontFamily: formData.fontFamily,
-                    }}
-                  >
-                    {DEMO_DATA.name}
-                  </div>
-                  {/* Agency */}
-                  <div
-                    className="absolute text-white truncate"
-                    style={{
-                      left: formData.elements.agency.x * scale,
-                      top: formData.elements.agency.y * scale,
-                      width: formData.elements.agency.width * scale,
-                      height: formData.elements.agency.height * scale,
-                      fontSize: 10 * scale * 3,
-                      fontFamily: formData.fontFamily,
-                    }}
-                  >
-                    {DEMO_DATA.agency}
-                  </div>
-                  {/* Profession */}
-                  <div
-                    className="absolute text-white truncate"
-                    style={{
-                      left: formData.elements.profession.x * scale,
-                      top: formData.elements.profession.y * scale,
-                      width: formData.elements.profession.width * scale,
-                      height: formData.elements.profession.height * scale,
-                      fontSize: 10 * scale * 3,
-                      fontFamily: formData.fontFamily,
-                    }}
-                  >
-                    {DEMO_DATA.profession}
-                  </div>
-                  {/* Office */}
-                  <div
-                    className="absolute text-white truncate"
-                    style={{
-                      left: formData.elements.office.x * scale,
-                      top: formData.elements.office.y * scale,
-                      width: formData.elements.office.width * scale,
-                      height: formData.elements.office.height * scale,
-                      fontSize: 8 * scale * 3,
-                      fontFamily: formData.fontFamily,
-                    }}
-                  >
-                    {DEMO_DATA.office}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Actions */}
             <div className="flex gap-2 mt-6">
