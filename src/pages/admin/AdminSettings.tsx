@@ -816,10 +816,21 @@ function EditProfessionForm({
 function NotificationsSettings() {
   const queryClient = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
+  const [deletingTemplate, setDeletingTemplate] = useState<NotificationTemplate | null>(null);
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [editedTemplate, setEditedTemplate] = useState('');
   const [editedName, setEditedName] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [editedKey, setEditedKey] = useState('');
   const [testingTemplate, setTestingTemplate] = useState<string | null>(null);
+
+  // New template state
+  const [newTemplate, setNewTemplate] = useState({
+    key: '',
+    name: '',
+    description: '',
+    template: ''
+  });
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['notification-templates'],
@@ -834,11 +845,35 @@ function NotificationsSettings() {
     }
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, name, template, description }: { id: string; name: string; template: string; description: string }) => {
+  const addMutation = useMutation({
+    mutationFn: async (template: { key: string; name: string; description: string; template: string }) => {
       const { error } = await supabase
         .from('notification_templates')
-        .update({ name, template, description })
+        .insert({
+          key: template.key,
+          name: template.name,
+          description: template.description || null,
+          template: template.template
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-templates'] });
+      toast.success('Шаблон создан');
+      setIsAddingTemplate(false);
+      setNewTemplate({ key: '', name: '', description: '', template: '' });
+    },
+    onError: (error) => {
+      toast.error('Ошибка создания', { description: error.message });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, name, template, description, key }: { id: string; name: string; template: string; description: string; key: string }) => {
+      const { error } = await supabase
+        .from('notification_templates')
+        .update({ name, template, description, key })
         .eq('id', id);
       
       if (error) throw error;
@@ -850,6 +885,25 @@ function NotificationsSettings() {
     },
     onError: (error) => {
       toast.error('Ошибка', { description: error.message });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('notification_templates')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-templates'] });
+      toast.success('Шаблон удалён');
+      setDeletingTemplate(null);
+    },
+    onError: (error) => {
+      toast.error('Ошибка удаления', { description: error.message });
     }
   });
 
@@ -877,6 +931,7 @@ function NotificationsSettings() {
     setEditedName(template.name);
     setEditedTemplate(template.template);
     setEditedDescription(template.description || '');
+    setEditedKey(template.key);
   };
 
   const handleTest = (template: NotificationTemplate) => {
@@ -892,8 +947,11 @@ function NotificationsSettings() {
       name: editedName,
       template: editedTemplate,
       description: editedDescription,
+      key: editedKey,
     });
   };
+
+  const commonVariables = ['{name}', '{text}', '{details}', '{city}', '{phone}', '{contact}', '{budget}', '{rejection_reason}'];
 
   const getVariablesForKey = (key: string): string[] => {
     const variablesMap: Record<string, string[]> = {
@@ -903,26 +961,32 @@ function NotificationsSettings() {
       'new_order': ['{text}', '{city_line}', '{budget_line}', '{contact}'],
       'new_question': ['{text}', '{details_line}'],
     };
-    return variablesMap[key] || [];
+    return variablesMap[key] || commonVariables;
   };
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Шаблоны уведомлений
-        </CardTitle>
-        <CardDescription>
-          Управление шаблонами Telegram-уведомлений
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Шаблоны уведомлений
+          </CardTitle>
+          <CardDescription>
+            Управление шаблонами Telegram-уведомлений. Все системные уведомления с возможностью редактирования.
+          </CardDescription>
+        </div>
+        <Button onClick={() => setIsAddingTemplate(true)} className="bg-gradient-primary">
+          <Plus className="h-4 w-4 mr-2" />
+          Добавить
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="bg-muted/50 rounded-lg p-4">
           <p className="text-sm text-muted-foreground">
             Используйте переменные в фигурных скобках, например <code className="bg-muted px-1 rounded">{'{name}'}</code>. 
             Переменные с суффиксом <code className="bg-muted px-1 rounded">_line</code> автоматически скрываются, если значение пустое.
-            Поддерживается HTML-разметка Telegram.
+            Поддерживается HTML-разметка Telegram: <code className="bg-muted px-1 rounded">&lt;b&gt;</code>, <code className="bg-muted px-1 rounded">&lt;i&gt;</code>, <code className="bg-muted px-1 rounded">&lt;a href=""&gt;</code>.
           </p>
         </div>
 
@@ -932,7 +996,7 @@ function NotificationsSettings() {
           </div>
         ) : templates?.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Шаблоны не найдены
+            Шаблоны не найдены. Добавьте первый шаблон.
           </div>
         ) : (
           <div className="space-y-4">
@@ -943,7 +1007,10 @@ function NotificationsSettings() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-medium text-foreground">{template.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">{template.name}</p>
+                      <Badge variant="outline" className="text-xs">{template.key}</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">{template.description}</p>
                   </div>
                   <div className="flex gap-2">
@@ -964,6 +1031,9 @@ function NotificationsSettings() {
                       <Pencil className="h-4 w-4 mr-1" />
                       Редактировать
                     </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeletingTemplate(template)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
                 <div className="bg-muted rounded-lg p-3">
@@ -982,6 +1052,91 @@ function NotificationsSettings() {
         )}
       </CardContent>
 
+      {/* Add Template Dialog */}
+      <Dialog open={isAddingTemplate} onOpenChange={setIsAddingTemplate}>
+        <DialogContent className="bg-card border-border max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Добавить шаблон уведомления</DialogTitle>
+            <DialogDescription>Создайте новый шаблон для Telegram-уведомлений</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-key">Ключ (уникальный ID) *</Label>
+                <Input
+                  id="new-key"
+                  value={newTemplate.key}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                  placeholder="new_partner_welcome"
+                  className="bg-input border-border font-mono"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-name">Название *</Label>
+                <Input
+                  id="new-name"
+                  value={newTemplate.name}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+                  placeholder="Приветствие нового партнёра"
+                  className="bg-input border-border"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-description">Описание</Label>
+              <Input
+                id="new-description"
+                value={newTemplate.description}
+                onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
+                placeholder="Описание когда отправляется это уведомление"
+                className="bg-input border-border"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-template">Шаблон сообщения *</Label>
+              <textarea
+                id="new-template"
+                value={newTemplate.template}
+                onChange={(e) => setNewTemplate({ ...newTemplate, template: e.target.value })}
+                rows={8}
+                placeholder="🎉 Добро пожаловать, {name}!&#10;&#10;Вы успешно стали нашим партнёром."
+                className="w-full font-mono text-sm rounded-md border border-border bg-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <div className="flex flex-wrap gap-1 mt-1">
+                <span className="text-xs text-muted-foreground mr-1">Частые переменные:</span>
+                {commonVariables.map((variable) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded hover:bg-primary/20 transition-colors"
+                    onClick={() => setNewTemplate(prev => ({ ...prev, template: prev.template + variable }))}
+                  >
+                    {variable}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddingTemplate(false)}>
+              Отмена
+            </Button>
+            <Button 
+              onClick={() => addMutation.mutate(newTemplate)} 
+              disabled={!newTemplate.key || !newTemplate.name || !newTemplate.template || addMutation.isPending} 
+              className="bg-gradient-primary"
+            >
+              {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Добавить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Template Dialog */}
       <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
         <DialogContent className="bg-card border-border max-w-2xl">
@@ -990,14 +1145,25 @@ function NotificationsSettings() {
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tmpl-name">Название</Label>
-              <Input
-                id="tmpl-name"
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                className="bg-input border-border"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tmpl-key">Ключ</Label>
+                <Input
+                  id="tmpl-key"
+                  value={editedKey}
+                  onChange={(e) => setEditedKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                  className="bg-input border-border font-mono"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tmpl-name">Название</Label>
+                <Input
+                  id="tmpl-name"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className="bg-input border-border"
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -1048,6 +1214,28 @@ function NotificationsSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingTemplate} onOpenChange={() => setDeletingTemplate(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить шаблон?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить шаблон "{deletingTemplate?.name}"?
+              Это может повлиять на работу уведомлений в системе.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletingTemplate && deleteMutation.mutate(deletingTemplate.id)}
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Удалить'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
