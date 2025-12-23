@@ -591,88 +591,73 @@ export default function PartnerForm() {
             </div>
 
             <div className="space-y-5">
-              <FormInput
-                label={t('name')}
-                required
-                value={formData.name}
-                onChange={e => updateField('name', e.target.value)}
-                placeholder={t('enterName')}
-                error={errors.name}
-                success={formData.name.trim().length >= 2}
-              />
+              <div className="grid grid-cols-[1fr_140px] gap-4">
+                <FormInput
+                  label={t('name')}
+                  required
+                  value={formData.name}
+                  onChange={e => updateField('name', e.target.value)}
+                  placeholder={t('enterName')}
+                  error={errors.name}
+                  success={formData.name.trim().length >= 2}
+                />
+                <div>
+                  <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-2">
+                    Дата рождения
+                    <span className="text-primary">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.birthDate ? (() => {
+                      const d = new Date(formData.birthDate);
+                      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+                    })() : ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d.]/g, '');
+                      const parts = val.split('.');
+                      if (parts.length === 3 && parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
+                        const day = parseInt(parts[0]);
+                        const month = parseInt(parts[1]);
+                        const year = parseInt(parts[2]);
+                        if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= new Date().getFullYear()) {
+                          updateField('birthDate', `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+                        }
+                      } else {
+                        // Allow partial input, store as display value temporarily
+                        if (val.length <= 10) {
+                          // Format as user types: add dots automatically
+                          let formatted = val.replace(/\./g, '');
+                          if (formatted.length > 2) formatted = formatted.slice(0, 2) + '.' + formatted.slice(2);
+                          if (formatted.length > 5) formatted = formatted.slice(0, 5) + '.' + formatted.slice(5);
+                          e.target.value = formatted;
+                        }
+                      }
+                    }}
+                    placeholder="ДД.ММ.ГГГГ"
+                    className={cn(
+                      "w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground text-center",
+                      "hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none",
+                      errors.birthDate && "border-destructive focus:ring-destructive/30 focus:border-destructive"
+                    )}
+                  />
+                  {errors.birthDate && (
+                    <p className="text-xs text-destructive mt-1">{errors.birthDate}</p>
+                  )}
+                </div>
+              </div>
 
               <div>
                 <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-2">
-                  Дата рождения
+                  Выбрать профессию
                   <span className="text-primary">*</span>
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <select
-                    value={formData.birthDate ? new Date(formData.birthDate).getDate().toString() : ''}
-                    onChange={(e) => {
-                      const day = e.target.value;
-                      const currentDate = formData.birthDate ? new Date(formData.birthDate) : new Date();
-                      const month = formData.birthDate ? currentDate.getMonth() : 0;
-                      const year = formData.birthDate ? currentDate.getFullYear() : 1990;
-                      if (day) {
-                        updateField('birthDate', `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
-                      }
-                    }}
-                    className="w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  >
-                    <option value="">День</option>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                      <option key={day} value={day}>{day}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={formData.birthDate ? (new Date(formData.birthDate).getMonth() + 1).toString() : ''}
-                    onChange={(e) => {
-                      const month = e.target.value;
-                      const currentDate = formData.birthDate ? new Date(formData.birthDate) : new Date();
-                      const day = formData.birthDate ? currentDate.getDate() : 1;
-                      const year = formData.birthDate ? currentDate.getFullYear() : 1990;
-                      if (month) {
-                        updateField('birthDate', `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
-                      }
-                    }}
-                    className="w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  >
-                    <option value="">Месяц</option>
-                    {['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'].map((month, i) => (
-                      <option key={i} value={i + 1}>{month}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={formData.birthDate ? new Date(formData.birthDate).getFullYear().toString() : ''}
-                    onChange={(e) => {
-                      const year = e.target.value;
-                      const currentDate = formData.birthDate ? new Date(formData.birthDate) : new Date();
-                      const day = formData.birthDate ? currentDate.getDate() : 1;
-                      const month = formData.birthDate ? currentDate.getMonth() : 0;
-                      if (year) {
-                        updateField('birthDate', `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
-                      }
-                    }}
-                    className="w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  >
-                    <option value="">Год</option>
-                    {Array.from({ length: 85 }, (_, i) => new Date().getFullYear() - 16 - i).map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-                {errors.birthDate && (
-                  <p className="text-xs text-destructive mt-1">{errors.birthDate}</p>
-                )}
+                <ProfessionSelect
+                  value={formData.profession}
+                  onChange={(value) => updateField('profession', value)}
+                  error={errors.profession}
+                  required={false}
+                />
               </div>
-
-              <ProfessionSelect
-                value={formData.profession}
-                onChange={(value) => updateField('profession', value)}
-                error={errors.profession}
-                required
-              />
 
               <CategorySelect
                 selectedIds={selectedCategories}

@@ -78,31 +78,26 @@ export const ProfessionSelect = ({
     <div className="space-y-2">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
-            <Input
-              value={open ? search : displayValue}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                if (!open) setOpen(true);
-              }}
-              onFocus={() => setOpen(true)}
-              placeholder="Начните вводить профессию..."
-              className={cn(
-                "pl-9 pr-10 py-3 rounded-xl bg-input/50 border border-border/50",
-                "hover:border-primary/50 hover:bg-input/70",
-                "focus:ring-2 focus:ring-primary/30 focus:border-primary",
-                error && "border-destructive focus:ring-destructive/30 focus:border-destructive"
-              )}
-            />
+          <button
+            type="button"
+            className={cn(
+              "w-full flex items-center gap-2 px-4 py-3 rounded-xl text-left",
+              "bg-input/50 border border-border/50 transition-all duration-200",
+              "hover:border-primary/50 hover:bg-input/70",
+              "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary",
+              error && "border-destructive focus:ring-destructive/30 focus:border-destructive",
+              !displayValue && "text-muted-foreground"
+            )}
+          >
+            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <span className="truncate flex-1">
+              {displayValue || 'Начните вводить профессию...'}
+            </span>
             <ChevronDown className={cn(
-              "absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-transform duration-200",
+              "w-4 h-4 text-muted-foreground transition-transform duration-200 flex-shrink-0",
               open && "rotate-180"
             )} />
-            {required && (
-              <span className="absolute -top-2 right-0 text-primary text-xs">*</span>
-            )}
-          </div>
+          </button>
         </PopoverTrigger>
 
         <PopoverContent 
