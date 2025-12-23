@@ -24,7 +24,6 @@ const getInitialFormData = (userName: string): PartnerFormData => ({
   photo_url: '',
   logo_url: '',
 });
-import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { ProfessionSelect } from '@/components/mini-app/ProfessionSelect';
 import { DateInput } from '@/components/mini-app/DateInput';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
@@ -103,7 +102,7 @@ export default function PartnerForm() {
   const [direction, setDirection] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<CardTemplate | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -461,16 +460,6 @@ export default function PartnerForm() {
 
       if (appError) throw appError;
 
-      const categoryInserts = selectedCategories.map(categoryId => ({
-        application_id: application.id,
-        category_id: categoryId,
-      }));
-
-      const { error: catError } = await supabase
-        .from('partner_application_categories')
-        .insert(categoryInserts);
-
-      if (catError) throw catError;
 
       // Clear saved form data
       clearSavedData();
@@ -824,10 +813,7 @@ export default function PartnerForm() {
               </div>
               <PartnerPreviewCard 
                 data={{...formData, tg_video: ''}}
-                categories={selectedCategories.map(id => {
-                  const cat = categoriesData?.find(c => c.id === id);
-                  return { id, name: cat?.name || '' };
-                }).filter(c => c.name)}
+                categories={[]}
               />
             </div>
           </div>
