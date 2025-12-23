@@ -11,8 +11,9 @@ import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
 import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
-import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate, ZoomIn } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -53,6 +54,9 @@ export default function PartnerForm() {
   const [tgChecking, setTgChecking] = useState(false);
   const [tgVerified, setTgVerified] = useState<boolean | null>(null);
   const [tgChannelInfo, setTgChannelInfo] = useState<{ title: string; type: string } | null>(null);
+  
+  // Состояние для модального увеличения баннера
+  const [bannerZoomOpen, setBannerZoomOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     name: user?.first_name || '',
@@ -695,13 +699,30 @@ export default function PartnerForm() {
                 <p className="text-xs text-muted-foreground mb-3">
                   Текст на дизайне будет скорректирован на ваш после модерации
                 </p>
-                <div className="aspect-video rounded-xl overflow-hidden border border-white/10">
+                <div 
+                  className="aspect-video rounded-xl overflow-hidden border border-white/10 cursor-pointer relative group"
+                  onClick={() => setBannerZoomOpen(true)}
+                >
                   <img 
                     src={selectedTemplate.image_url} 
                     alt="Выбранный шаблон баннера"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
                   />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
+                
+                {/* Zoom Modal */}
+                <Dialog open={bannerZoomOpen} onOpenChange={setBannerZoomOpen}>
+                  <DialogContent className="max-w-4xl w-[95vw] p-2 bg-background/95 backdrop-blur-sm">
+                    <img 
+                      src={selectedTemplate.image_url} 
+                      alt="Увеличенный баннер"
+                      className="w-full h-auto rounded-lg"
+                    />
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
           </div>
