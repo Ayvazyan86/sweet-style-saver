@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 interface PartnerPreviewCardProps {
   data: {
     name: string;
-    age: string;
+    birthDate?: string;
+    age?: string;
     profession: string;
     city: string;
     agency_name: string;
@@ -58,7 +59,13 @@ export function PartnerPreviewCard({ data, categories }: PartnerPreviewCardProps
             </p>
           )}
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-            {data.age && <span>{data.age} лет</span>}
+            {(data.age || data.birthDate) && (
+              <span>
+                {data.age ? data.age : 
+                  data.birthDate ? Math.floor((new Date().getTime() - new Date(data.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : ''
+                } лет
+              </span>
+            )}
             {data.city && (
               <span className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
