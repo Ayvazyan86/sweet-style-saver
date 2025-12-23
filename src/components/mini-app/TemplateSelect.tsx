@@ -64,12 +64,11 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">
-          Выберите шаблон карточки
-        </label>
-        {error && <span className="text-xs text-destructive">{error}</span>}
-      </div>
+      {error && (
+        <div className="flex items-center justify-end">
+          <span className="text-xs text-destructive">{error}</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         {templates.map((template) => {
           const isSelected = value === template.id;
