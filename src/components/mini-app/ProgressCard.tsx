@@ -32,7 +32,7 @@ export const ProgressCard = ({
         'relative rounded-2xl p-6',
         'bg-gradient-to-br from-card/80 to-card/40',
         'backdrop-blur-xl border border-white/10',
-        'shadow-card overflow-hidden',
+        'shadow-card',
         className
       )}
     >

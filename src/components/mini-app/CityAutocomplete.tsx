@@ -156,7 +156,7 @@ export function CityAutocomplete({
   );
 
   return (
-    <div className="space-y-2 relative">
+    <div className="space-y-2 relative z-20">
       {label && (
         <label className="text-sm font-medium text-foreground block">
           {label} {required && <span className="text-destructive">*</span>}
@@ -210,7 +210,8 @@ export function CityAutocomplete({
       {showDropdown && suggestions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-card border border-white/10 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          className="absolute left-0 right-0 z-[100] mt-1 bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{ top: '100%' }}
         >
           {suggestions.map((suggestion, index) => (
             <button
