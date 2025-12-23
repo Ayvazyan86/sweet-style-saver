@@ -127,12 +127,16 @@ export function CityAutocomplete({
   };
 
   const handleSelectSuggestion = (suggestion: CitySuggestion) => {
-    setInputValue(suggestion.name);
+    // Format city with region: "Регион, г. Город"
+    const formattedCity = suggestion.region 
+      ? `${suggestion.region}, г. ${suggestion.name}`
+      : suggestion.name;
+    setInputValue(formattedCity);
     setIsVerified(true);
     setShowDropdown(false);
     setSuggestions([]);
     setJustSelected(true); // Prevent dropdown from reopening
-    onChange(suggestion.name, true);
+    onChange(formattedCity, true);
   };
 
   const handleFocus = () => {
