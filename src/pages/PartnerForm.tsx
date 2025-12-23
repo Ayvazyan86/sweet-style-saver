@@ -76,6 +76,7 @@ export default function PartnerForm() {
     tg_video: '',
     office_address: '',
     photo_url: '',
+    logo_url: '',
   });
 
   const updateField = (field: string, value: string) => {
@@ -453,10 +454,17 @@ export default function PartnerForm() {
               </div>
 
               <div className="space-y-4">
-                <PhotoUpload
-                  value={formData.photo_url || undefined}
-                  onChange={(url) => updateField('photo_url', url || '')}
-                />
+                <div className="flex gap-4 justify-center">
+                  <PhotoUpload
+                    value={formData.photo_url || undefined}
+                    onChange={(url) => updateField('photo_url', url || '')}
+                  />
+                  <PhotoUpload
+                    value={formData.logo_url || undefined}
+                    onChange={(url) => updateField('logo_url', url || '')}
+                    className="border-dashed"
+                  />
+                </div>
 
                 <div className="grid grid-cols-[1fr_80px] gap-4">
                   <FormInput
