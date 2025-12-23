@@ -96,14 +96,6 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
                   </div>
                 </div>
               )}
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                <span className="text-xs font-medium text-white">{template.name}</span>
-                {template.is_default && (
-                  <span className="ml-1 text-xs text-primary-foreground bg-primary/80 px-1 rounded">
-                    ★
-                  </span>
-                )}
-              </div>
             </button>
           );
         })}
