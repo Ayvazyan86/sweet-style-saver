@@ -25,6 +25,7 @@ const getInitialFormData = (userName: string): PartnerFormData => ({
   logo_url: '',
 });
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
+import { ProfessionSelect } from '@/components/mini-app/ProfessionSelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
@@ -325,6 +326,7 @@ export default function PartnerForm() {
       if (!formData.age || parseInt(formData.age) < 16 || parseInt(formData.age) > 100) {
         newErrors.age = 'Введите корректный возраст (16-100)';
       }
+      if (!formData.profession.trim()) newErrors.profession = 'Выберите профессию';
       if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
     }
 
@@ -605,6 +607,13 @@ export default function PartnerForm() {
                   success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
                 />
               </div>
+
+              <ProfessionSelect
+                value={formData.profession}
+                onChange={(value) => updateField('profession', value)}
+                error={errors.profession}
+                required
+              />
 
               <CategorySelect
                 selectedIds={selectedCategories}
