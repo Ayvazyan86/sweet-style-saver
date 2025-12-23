@@ -692,12 +692,8 @@ export default function PartnerForm() {
             {/* Banner Preview */}
             {selectedTemplate && (
               <div className="mt-6">
-                <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm font-medium">Выберите дизайн баннера</span>
-                </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Текст на дизайне будет скорректирован на ваш после модерации
+                  Текст на баннере будет скорректирован на ваши данные после модерации анкеты
                 </p>
                 <div 
                   className="aspect-video rounded-xl overflow-hidden border border-white/10 cursor-pointer relative group"
