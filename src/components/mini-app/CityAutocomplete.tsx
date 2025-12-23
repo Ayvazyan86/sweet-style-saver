@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { MapPin, Check, Loader2, AlertCircle } from 'lucide-react';
+import { MapPin, Check, Loader2, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CitySuggestion {
@@ -21,6 +19,7 @@ interface CityAutocompleteProps {
   placeholder?: string;
   required?: boolean;
   error?: string;
+  hint?: string;
 }
 
 export function CityAutocomplete({
@@ -30,6 +29,7 @@ export function CityAutocomplete({
   placeholder = 'Начните вводить название города',
   required = false,
   error,
+  hint,
 }: CityAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value);
   const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
@@ -127,10 +127,8 @@ export function CityAutocomplete({
   };
 
   const handleSelectSuggestion = (suggestion: CitySuggestion) => {
-    // Format city with region: "Краснодарский край, г. Армавир"
-    const formattedCity = suggestion.region 
-      ? `${suggestion.region}, г. ${suggestion.name}`
-      : `г. ${suggestion.name}`;
+    // Format city: только "г. Название"
+    const formattedCity = `г. ${suggestion.name}`;
     setInputValue(formattedCity);
     setIsVerified(true);
     setShowDropdown(false);
@@ -145,13 +143,24 @@ export function CityAutocomplete({
     }
   };
 
+  // Unified input styles matching FormInput
+  const inputClasses = cn(
+    'w-full pl-10 pr-10 py-3 rounded-xl',
+    'bg-card/50 backdrop-blur-sm',
+    'border border-white/10',
+    'text-foreground placeholder:text-muted-foreground',
+    'focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20',
+    'transition-all duration-200',
+    error && 'border-destructive/50 focus:border-destructive focus:ring-destructive/20',
+    isVerified && 'border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-500/20'
+  );
+
   return (
-    <div className="relative">
+    <div className="space-y-2 relative">
       {label && (
-        <Label className="text-sm font-medium text-foreground mb-2 block">
-          {label}
-          {required && <span className="text-destructive ml-1">*</span>}
-        </Label>
+        <label className="text-sm font-medium text-foreground block">
+          {label} {required && <span className="text-destructive">*</span>}
+        </label>
       )}
       
       <div className="relative">
@@ -159,39 +168,41 @@ export function CityAutocomplete({
           <MapPin className="w-4 h-4 text-muted-foreground" />
         </div>
         
-        <Input
+        <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={handleInputChange}
           onFocus={handleFocus}
           placeholder={placeholder}
-          className={cn(
-            'pl-10 pr-10',
-            error && 'border-destructive focus:ring-destructive',
-            isVerified && 'border-green-500/50 focus:ring-green-500'
-          )}
+          className={inputClasses}
         />
         
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           {isLoading ? (
-            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+            <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
           ) : isVerified ? (
-            <Check className="w-4 h-4 text-green-500" />
-          ) : error ? (
-            <AlertCircle className="w-4 h-4 text-destructive" />
+            <Check className="w-5 h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
           ) : null}
         </div>
       </div>
 
       {error && (
-        <p className="text-sm text-destructive mt-1">{error}</p>
+        <p className="text-sm text-destructive flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+          <X className="w-4 h-4 flex-shrink-0" /> {error}
+        </p>
       )}
 
       {isVerified && !error && (
-        <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
-          <Check className="w-3 h-3" />
+        <p className="text-xs text-emerald-600 flex items-center gap-1.5">
+          <Check className="w-3.5 h-3.5 flex-shrink-0" />
           Город подтверждён
+        </p>
+      )}
+
+      {hint && !error && !isVerified && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 flex-shrink-0" /> {hint}
         </p>
       )}
 
@@ -199,14 +210,14 @@ export function CityAutocomplete({
       {showDropdown && suggestions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden"
+          className="absolute z-50 w-full mt-1 bg-card border border-white/10 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
         >
           {suggestions.map((suggestion, index) => (
             <button
               key={`${suggestion.name}-${index}`}
               type="button"
               onClick={() => handleSelectSuggestion(suggestion)}
-              className="w-full px-4 py-3 text-left hover:bg-accent transition-colors flex items-start gap-3 border-b border-border/50 last:border-b-0"
+              className="w-full px-4 py-3 text-left hover:bg-secondary/50 transition-colors flex items-start gap-3 border-b border-white/5 last:border-b-0"
             >
               <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
               <div>
