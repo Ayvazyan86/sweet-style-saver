@@ -27,7 +27,7 @@ export function CityAutocomplete({
   value,
   onChange,
   label = 'Город проживания',
-  placeholder = 'Введите название города',
+  placeholder = 'Начните вводить название города',
   required = false,
   error,
 }: CityAutocompleteProps) {
@@ -127,10 +127,10 @@ export function CityAutocomplete({
   };
 
   const handleSelectSuggestion = (suggestion: CitySuggestion) => {
-    // Format city with region: "Регион, г. Город"
+    // Format city with region: "Краснодарский край, г. Армавир"
     const formattedCity = suggestion.region 
       ? `${suggestion.region}, г. ${suggestion.name}`
-      : suggestion.name;
+      : `г. ${suggestion.name}`;
     setInputValue(formattedCity);
     setIsVerified(true);
     setShowDropdown(false);

@@ -97,9 +97,13 @@ Deno.serve(async (req) => {
         const meta = geo.metaDataProperty.GeocoderMetaData
         const components = meta.Address.Components
         
-        // Extract city and region
+        // Extract city and region (area/kray for proper formatting)
         const cityName = components.find(c => c.kind === 'locality')?.name || geo.name
-        const region = components.find(c => c.kind === 'province')?.name
+        // Try to find area first (like "Краснодарский край"), then fall back to province
+        const area = components.find(c => c.kind === 'area')?.name
+        const province = components.find(c => c.kind === 'province')?.name
+        // Use area (kray) if available, otherwise use province
+        const region = area || province
         const country = components.find(c => c.kind === 'country')?.name
         
         const [lon, lat] = geo.Point.pos.split(' ').map(Number)
