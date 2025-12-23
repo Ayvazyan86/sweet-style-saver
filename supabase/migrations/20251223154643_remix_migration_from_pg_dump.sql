@@ -318,6 +318,25 @@ $$;
 SET default_table_access_method = heap;
 
 --
+-- Name: card_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.card_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    image_url text NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    text_x integer DEFAULT 50 NOT NULL,
+    text_y integer DEFAULT 314 NOT NULL,
+    text_color text DEFAULT '#FFFFFF'::text NOT NULL,
+    font_size integer DEFAULT 48 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -409,6 +428,21 @@ CREATE TABLE public.notification_errors (
 
 
 --
+-- Name: notification_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notification_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    key text NOT NULL,
+    name text NOT NULL,
+    template text NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: order_categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -491,7 +525,12 @@ CREATE TABLE public.partner_applications (
     moderated_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    photo_url text
+    photo_url text,
+    rutube text,
+    dzen text,
+    vk_video text,
+    tg_video text,
+    card_template_id uuid
 );
 
 
@@ -549,7 +588,12 @@ CREATE TABLE public.partner_profiles (
     channel_post_id bigint,
     discussion_message_id bigint,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    rutube text,
+    dzen text,
+    vk_video text,
+    tg_video text,
+    card_template_id uuid
 );
 
 
@@ -655,6 +699,14 @@ CREATE TABLE public.user_roles (
 
 
 --
+-- Name: card_templates card_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.card_templates
+    ADD CONSTRAINT card_templates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -732,6 +784,22 @@ ALTER TABLE ONLY public.moderation_logs
 
 ALTER TABLE ONLY public.notification_errors
     ADD CONSTRAINT notification_errors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notification_templates notification_templates_key_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_templates
+    ADD CONSTRAINT notification_templates_key_key UNIQUE (key);
+
+
+--
+-- Name: notification_templates notification_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_templates
+    ADD CONSTRAINT notification_templates_pkey PRIMARY KEY (id);
 
 
 --
@@ -1046,6 +1114,13 @@ CREATE TRIGGER on_new_question_notify_partners AFTER INSERT ON public.questions 
 
 
 --
+-- Name: card_templates update_card_templates_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_card_templates_updated_at BEFORE UPDATE ON public.card_templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: categories update_categories_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1057,6 +1132,13 @@ CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON public.categories F
 --
 
 CREATE TRIGGER update_custom_field_definitions_updated_at BEFORE UPDATE ON public.custom_field_definitions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: notification_templates update_notification_templates_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_notification_templates_updated_at BEFORE UPDATE ON public.notification_templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -1199,6 +1281,14 @@ ALTER TABLE ONLY public.partner_application_categories
 
 
 --
+-- Name: partner_applications partner_applications_card_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_applications
+    ADD CONSTRAINT partner_applications_card_template_id_fkey FOREIGN KEY (card_template_id) REFERENCES public.card_templates(id);
+
+
+--
 -- Name: partner_applications partner_applications_moderated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1252,6 +1342,14 @@ ALTER TABLE ONLY public.partner_profile_categories
 
 ALTER TABLE ONLY public.partner_profiles
     ADD CONSTRAINT partner_profiles_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.partner_applications(id);
+
+
+--
+-- Name: partner_profiles partner_profiles_card_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.partner_profiles
+    ADD CONSTRAINT partner_profiles_card_template_id_fkey FOREIGN KEY (card_template_id) REFERENCES public.card_templates(id);
 
 
 --
@@ -1342,6 +1440,20 @@ CREATE POLICY "Active partner profiles are viewable by everyone" ON public.partn
 
 
 --
+-- Name: partner_applications Admins can delete partner applications; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can delete partner applications" ON public.partner_applications FOR DELETE USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: card_templates Admins can manage card templates; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins can manage card templates" ON public.card_templates USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: categories Admins can manage categories; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1381,6 +1493,13 @@ CREATE POLICY "Application categories can be created" ON public.partner_applicat
 --
 
 CREATE POLICY "Application categories viewable by everyone" ON public.partner_application_categories FOR SELECT USING (true);
+
+
+--
+-- Name: card_templates Card templates are viewable by everyone; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Card templates are viewable by everyone" ON public.card_templates FOR SELECT USING (true);
 
 
 --
@@ -1510,6 +1629,13 @@ CREATE POLICY "Only admins can manage channel stats" ON public.channel_stats USI
 
 
 --
+-- Name: notification_templates Only admins can manage notification templates; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Only admins can manage notification templates" ON public.notification_templates USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: settings Only admins can manage settings; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -1528,6 +1654,13 @@ CREATE POLICY "Only admins can view channel stats" ON public.channel_stats FOR S
 --
 
 CREATE POLICY "Only admins can view moderation logs" ON public.moderation_logs FOR SELECT USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: notification_templates Only admins can view notification templates; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Only admins can view notification templates" ON public.notification_templates FOR SELECT USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 
 --
@@ -1685,6 +1818,12 @@ CREATE POLICY "Users can view own applications" ON public.partner_applications F
 
 
 --
+-- Name: card_templates; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.card_templates ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: categories; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1719,6 +1858,12 @@ ALTER TABLE public.moderation_logs ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.notification_errors ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: notification_templates; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.notification_templates ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: order_categories; Type: ROW SECURITY; Schema: public; Owner: -
