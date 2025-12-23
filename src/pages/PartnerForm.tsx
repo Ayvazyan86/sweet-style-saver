@@ -691,7 +691,7 @@ export default function PartnerForm() {
 
             {/* Banner Preview */}
             {selectedTemplate && (
-              <div className="mt-6">
+              <div className="mt-6 animate-fade-in">
                 <p className="text-xs text-muted-foreground mb-3">
                   Текст на баннере будет скорректирован на ваши данные после модерации анкеты
                 </p>
