@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useFormPersistence } from '@/hooks/useFormPersistence';
 import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
@@ -12,25 +13,29 @@ import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
 import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
 import { FormStepTabs, FormStep } from '@/components/mini-app/FormStepTabs';
+import { SuccessAnimation } from '@/components/mini-app/SuccessAnimation';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { 
   ArrowLeft, ArrowRight, User, Briefcase, Phone, 
   Loader2, Eye, LayoutTemplate, ZoomIn, Image, Camera, 
-  Share2, Building2 
+  Share2, Building2, Video, MapPin
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 
+// 7 steps now: Photo, Personal, Work, Contacts, Video, Office, Template
 const STEPS: FormStep[] = [
   { id: 1, title: 'Фото', shortTitle: 'Фото', icon: Camera },
   { id: 2, title: 'Личные данные', shortTitle: 'Личное', icon: User },
   { id: 3, title: 'Деятельность', shortTitle: 'Работа', icon: Briefcase },
   { id: 4, title: 'Контакты', shortTitle: 'Контакты', icon: Share2 },
-  { id: 5, title: 'Шаблон', shortTitle: 'Шаблон', icon: LayoutTemplate },
+  { id: 5, title: 'Видеоплатформы', shortTitle: 'Видео', icon: Video },
+  { id: 6, title: 'Офис', shortTitle: 'Офис', icon: Building2 },
+  { id: 7, title: 'Шаблон', shortTitle: 'Шаблон', icon: LayoutTemplate },
 ];
 
 const stepVariants = {
@@ -48,6 +53,26 @@ const stepVariants = {
   }),
 };
 
+interface PartnerFormData {
+  name: string;
+  age: string;
+  profession: string;
+  city: string;
+  agency_name: string;
+  agency_description: string;
+  self_description: string;
+  phone: string;
+  tg_channel: string;
+  website: string;
+  youtube: string;
+  rutube: string;
+  dzen: string;
+  vk_video: string;
+  office_address: string;
+  photo_url: string;
+  logo_url: string;
+}
+
 export default function PartnerForm() {
   const { t } = useLanguage();
   const { user, hapticFeedback } = useTelegram();
@@ -61,6 +86,38 @@ export default function PartnerForm() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<CardTemplate | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const initialFormData: PartnerFormData = {
+    name: user?.first_name || '',
+    age: '',
+    profession: '',
+    city: '',
+    agency_name: '',
+    agency_description: '',
+    self_description: '',
+    phone: '',
+    tg_channel: '',
+    website: '',
+    youtube: '',
+    rutube: '',
+    dzen: '',
+    vk_video: '',
+    office_address: '',
+    photo_url: '',
+    logo_url: '',
+  };
+
+  const { 
+    formData, 
+    setFormData, 
+    updateField: updateFormField, 
+    clearSavedData,
+    lastSaved 
+  } = useFormPersistence<PartnerFormData>(initialFormData, {
+    key: `partner_form_${user?.id || 'guest'}`,
+    expirationDays: 7,
+  });
 
   // Загружаем категории для предпросмотра
   const { data: categoriesData } = useQuery({
@@ -81,30 +138,9 @@ export default function PartnerForm() {
   
   // Состояние для модального увеличения баннера
   const [bannerZoomOpen, setBannerZoomOpen] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: user?.first_name || '',
-    age: '',
-    profession: '',
-    city: '',
-    agency_name: '',
-    agency_description: '',
-    self_description: '',
-    phone: '',
-    tg_channel: '',
-    website: '',
-    youtube: '',
-    rutube: '',
-    dzen: '',
-    vk_video: '',
-    tg_video: '',
-    office_address: '',
-    photo_url: '',
-    logo_url: '',
-  });
 
   const updateField = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    updateFormField(field as keyof PartnerFormData, value as never);
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -183,7 +219,7 @@ export default function PartnerForm() {
     } finally {
       setTgChecking(false);
     }
-  }, [errors.tg_channel]);
+  }, [errors.tg_channel, setFormData]);
 
   // Debounced проверка Telegram канала
   useEffect(() => {
@@ -245,16 +281,11 @@ export default function PartnerForm() {
     return /^https?:\/\/(www\.)?(vk\.com\/video|vkvideo\.ru)/.test(url);
   };
 
-  const isValidTgVideo = (url: string) => {
-    if (!url) return true;
-    return /^https?:\/\/(t\.me|telegram\.me)\//.test(url) || /^@[a-zA-Z0-9_]{5,}$/.test(url);
-  };
-
   const validateStep = (step: number) => {
     const newErrors: Record<string, string> = {};
     
     if (step === 1) {
-      // Фото опционально, но можно добавить проверку если нужно
+      // Фото опционально
     }
 
     if (step === 2) {
@@ -275,6 +306,9 @@ export default function PartnerForm() {
       if (formData.website && !isValidUrl(formData.website)) {
         newErrors.website = 'Неверный формат URL';
       }
+    }
+
+    if (step === 5) {
       if (formData.youtube && !isValidYoutube(formData.youtube)) {
         newErrors.youtube = 'Введите ссылку youtube.com или youtu.be';
       }
@@ -286,9 +320,6 @@ export default function PartnerForm() {
       }
       if (formData.vk_video && !isValidVkVideo(formData.vk_video)) {
         newErrors.vk_video = 'Введите ссылку vk.com/video или vkvideo.ru';
-      }
-      if (formData.tg_video && !isValidTgVideo(formData.tg_video)) {
-        newErrors.tg_video = 'Введите @username или ссылку t.me';
       }
     }
     
@@ -310,7 +341,7 @@ export default function PartnerForm() {
       }
       setDirection(1);
       hapticFeedback('light');
-      setCurrentStep(prev => Math.min(prev + 1, 5));
+      setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     } else {
       hapticFeedback('error');
     }
@@ -379,7 +410,6 @@ export default function PartnerForm() {
           rutube: formData.rutube || null,
           dzen: formData.dzen || null,
           vk_video: formData.vk_video || null,
-          tg_video: formData.tg_video || null,
           office_address: formData.office_address || null,
           photo_url: formData.photo_url || null,
           card_template_id: selectedTemplateId || null,
@@ -400,12 +430,12 @@ export default function PartnerForm() {
 
       if (catError) throw catError;
 
+      // Clear saved form data
+      clearSavedData();
+
       hapticFeedback('success');
-      toast.success(t('applicationSent'), {
-        description: t('applicationSentDesc'),
-      });
+      setShowSuccess(true);
       
-      navigate('/');
     } catch (error) {
       console.error('Error submitting application:', error);
       hapticFeedback('error');
@@ -415,6 +445,10 @@ export default function PartnerForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuccessComplete = () => {
+    navigate('/');
   };
 
   const renderStepContent = () => {
@@ -540,13 +574,6 @@ export default function PartnerForm() {
                 />
               </div>
 
-              <CityAutocomplete
-                label={t('city')}
-                value={formData.city}
-                onChange={(value) => updateField('city', value)}
-                placeholder={t('enterCity')}
-              />
-
               <CategorySelect
                 selectedIds={selectedCategories}
                 onChange={setSelectedCategories}
@@ -610,149 +637,152 @@ export default function PartnerForm() {
 
       case 4:
         return (
+          <GlassCard>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <Share2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Контакты</h2>
+                <p className="text-sm text-muted-foreground">Как с вами связаться</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <FormInput
+                label={t('phone')}
+                type="tel"
+                value={formData.phone}
+                onChange={handlePhoneChange}
+                placeholder="+7 (___) ___-__-__"
+                hint="Номер форматируется автоматически"
+                error={errors.phone}
+                success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
+              />
+
+              <div className="space-y-2">
+                <FormInput
+                  label={t('tgChannel')}
+                  value={formData.tg_channel}
+                  onChange={e => updateField('tg_channel', e.target.value)}
+                  placeholder="@username или https://t.me/..."
+                  hint={
+                    tgChecking 
+                      ? "Проверяем канал..." 
+                      : tgVerified && tgChannelInfo 
+                        ? `✓ ${tgChannelInfo.title} (${tgChannelInfo.type === 'channel' ? 'канал' : tgChannelInfo.type === 'supergroup' ? 'группа' : tgChannelInfo.type})`
+                        : tgVerified === false 
+                          ? "Канал не найден или недоступен" 
+                          : "Можно указать @username или полную ссылку"
+                  }
+                  error={errors.tg_channel}
+                  success={tgVerified === true}
+                />
+                {tgChecking && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Проверяем существование канала...</span>
+                  </div>
+                )}
+              </div>
+
+              <FormInput
+                label={t('website')}
+                type="url"
+                value={formData.website}
+                onChange={e => updateField('website', e.target.value)}
+                placeholder="https://example.com"
+                hint="Укажите полный адрес сайта с https://"
+                error={errors.website}
+                success={!!formData.website && isValidUrl(formData.website)}
+              />
+            </div>
+          </GlassCard>
+        );
+
+      case 5:
+        return (
+          <GlassCard>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
+                <Video className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Видеоплатформы</h2>
+                <p className="text-sm text-muted-foreground">Ваши каналы</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <FormInput
+                label="YouTube"
+                value={formData.youtube}
+                onChange={e => updateField('youtube', e.target.value)}
+                placeholder="https://youtube.com/@channel"
+                error={errors.youtube}
+                success={!!formData.youtube && isValidYoutube(formData.youtube)}
+              />
+
+              <FormInput
+                label="Rutube"
+                value={formData.rutube}
+                onChange={e => updateField('rutube', e.target.value)}
+                placeholder="https://rutube.ru/channel/..."
+                error={errors.rutube}
+                success={!!formData.rutube && isValidRutube(formData.rutube)}
+              />
+
+              <FormInput
+                label="Яндекс Дзен"
+                value={formData.dzen}
+                onChange={e => updateField('dzen', e.target.value)}
+                placeholder="https://dzen.ru/..."
+                error={errors.dzen}
+                success={!!formData.dzen && isValidDzen(formData.dzen)}
+              />
+
+              <FormInput
+                label="VK Видео"
+                value={formData.vk_video}
+                onChange={e => updateField('vk_video', e.target.value)}
+                placeholder="https://vk.com/video..."
+                error={errors.vk_video}
+                success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
+              />
+            </div>
+          </GlassCard>
+        );
+
+      case 6:
+        return (
           <div className="space-y-6">
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                  <Share2 className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">Контакты</h2>
-                  <p className="text-sm text-muted-foreground">Как с вами связаться</p>
-                </div>
-              </div>
-
-              <div className="space-y-5">
-                <FormInput
-                  label={t('phone')}
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  placeholder="+7 (___) ___-__-__"
-                  hint="Номер форматируется автоматически"
-                  error={errors.phone}
-                  success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
-                />
-
-                <div className="space-y-2">
-                  <FormInput
-                    label={t('tgChannel')}
-                    value={formData.tg_channel}
-                    onChange={e => updateField('tg_channel', e.target.value)}
-                    placeholder="@username или https://t.me/..."
-                    hint={
-                      tgChecking 
-                        ? "Проверяем канал..." 
-                        : tgVerified && tgChannelInfo 
-                          ? `✓ ${tgChannelInfo.title} (${tgChannelInfo.type === 'channel' ? 'канал' : tgChannelInfo.type === 'supergroup' ? 'группа' : tgChannelInfo.type})`
-                          : tgVerified === false 
-                            ? "Канал не найден или недоступен" 
-                            : "Можно указать @username или полную ссылку"
-                    }
-                    error={errors.tg_channel}
-                    success={tgVerified === true}
-                  />
-                  {tgChecking && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      <span>Проверяем существование канала...</span>
-                    </div>
-                  )}
-                </div>
-
-                <FormInput
-                  label={t('website')}
-                  type="url"
-                  value={formData.website}
-                  onChange={e => updateField('website', e.target.value)}
-                  placeholder="https://example.com"
-                  hint="Укажите полный адрес сайта с https://"
-                  error={errors.website}
-                  success={!!formData.website && isValidUrl(formData.website)}
-                />
-              </div>
-            </GlassCard>
-
-            {/* Video platforms */}
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
-                  <Eye className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">Видеоплатформы</h2>
-                  <p className="text-sm text-muted-foreground">Ваши каналы</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <FormInput
-                  label="YouTube"
-                  value={formData.youtube}
-                  onChange={e => updateField('youtube', e.target.value)}
-                  placeholder="https://youtube.com/@channel"
-                  error={errors.youtube}
-                  success={!!formData.youtube && isValidYoutube(formData.youtube)}
-                />
-
-                <FormInput
-                  label="Rutube"
-                  value={formData.rutube}
-                  onChange={e => updateField('rutube', e.target.value)}
-                  placeholder="https://rutube.ru/channel/..."
-                  error={errors.rutube}
-                  success={!!formData.rutube && isValidRutube(formData.rutube)}
-                />
-
-                <FormInput
-                  label="Яндекс Дзен"
-                  value={formData.dzen}
-                  onChange={e => updateField('dzen', e.target.value)}
-                  placeholder="https://dzen.ru/..."
-                  error={errors.dzen}
-                  success={!!formData.dzen && isValidDzen(formData.dzen)}
-                />
-
-                <FormInput
-                  label="VK Видео"
-                  value={formData.vk_video}
-                  onChange={e => updateField('vk_video', e.target.value)}
-                  placeholder="https://vk.com/video..."
-                  error={errors.vk_video}
-                  success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
-                />
-
-                <FormInput
-                  label="Telegram видео"
-                  value={formData.tg_video}
-                  onChange={e => updateField('tg_video', e.target.value)}
-                  placeholder="@channel или https://t.me/..."
-                  hint="Канал с видеоконтентом"
-                  error={errors.tg_video}
-                  success={!!formData.tg_video && isValidTgVideo(formData.tg_video)}
-                />
-              </div>
-            </GlassCard>
-
-            {/* Office address */}
             <GlassCard>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">Адрес офиса</h2>
+                  <h2 className="text-xl font-bold text-foreground">Офис</h2>
                   <p className="text-sm text-muted-foreground">Где вас найти</p>
                 </div>
               </div>
 
-              <AddressAutocomplete
-                label={t('officeAddress')}
-                value={formData.office_address}
-                onChange={(address) => updateField('office_address', address)}
-                placeholder="Москва, ул. Примерная, д. 1, офис 123"
-                hint="Адрес проверяется через Yandex Geocoder"
-              />
+              <div className="space-y-5">
+                <CityAutocomplete
+                  label={t('city')}
+                  value={formData.city}
+                  onChange={(value) => updateField('city', value)}
+                  placeholder={t('enterCity')}
+                />
+
+                <AddressAutocomplete
+                  label={t('officeAddress')}
+                  value={formData.office_address}
+                  onChange={(address) => updateField('office_address', address)}
+                  placeholder="Москва, ул. Примерная, д. 1, офис 123"
+                  hint="Адрес проверяется через Yandex Geocoder"
+                />
+              </div>
             </GlassCard>
 
             {/* Preview Card */}
@@ -762,7 +792,7 @@ export default function PartnerForm() {
                 <span className="text-sm font-medium">Предпросмотр карточки</span>
               </div>
               <PartnerPreviewCard 
-                data={formData}
+                data={{...formData, tg_video: ''}}
                 categories={selectedCategories.map(id => {
                   const cat = categoriesData?.find(c => c.id === id);
                   return { id, name: cat?.name || '' };
@@ -772,7 +802,7 @@ export default function PartnerForm() {
           </div>
         );
 
-      case 5:
+      case 7:
         return (
           <div className="space-y-6">
             <GlassCard>
@@ -839,6 +869,19 @@ export default function PartnerForm() {
     }
   };
 
+  // Show success animation
+  if (showSuccess) {
+    return (
+      <AnimatePresence>
+        <SuccessAnimation 
+          onComplete={handleSuccessComplete}
+          message={t('applicationSent')}
+          description={t('applicationSentDesc')}
+        />
+      </AnimatePresence>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -857,6 +900,11 @@ export default function PartnerForm() {
                 Шаг {currentStep} из {STEPS.length} • {STEPS[currentStep - 1].title}
               </p>
             </div>
+            {lastSaved && (
+              <span className="text-[10px] text-muted-foreground/60">
+                Сохранено
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -902,25 +950,26 @@ export default function PartnerForm() {
               </motion.button>
             )}
             
-            {currentStep < 5 ? (
+            {currentStep < STEPS.length ? (
               <motion.button
                 type="button"
                 onClick={nextStep}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className={cn(
-                  "flex-1 py-4 px-6 rounded-xl font-semibold",
-                  "bg-gradient-to-r from-primary to-primary/80",
-                  "text-primary-foreground shadow-lg shadow-primary/20",
-                  "hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02]",
-                  "transition-all duration-200 flex items-center justify-center gap-2"
+                  "flex-1 py-4 px-6 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2",
+                  "bg-gradient-primary text-primary-foreground shadow-glow-primary hover:shadow-glow-primary-lg"
                 )}
               >
                 Далее
                 <ArrowRight className="w-4 h-4" />
               </motion.button>
             ) : (
-              <SubmitButton loading={loading} className="flex-1">
+              <SubmitButton
+                loading={loading}
+                disabled={loading}
+                className="flex-1"
+              >
                 {t('submit')}
               </SubmitButton>
             )}
