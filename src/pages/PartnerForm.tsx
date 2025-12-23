@@ -2,9 +2,28 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
-import { useFormPersistence } from '@/hooks/useFormPersistence';
 import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
+
+const getInitialFormData = (userName: string): PartnerFormData => ({
+  name: userName,
+  age: '',
+  profession: '',
+  city: '',
+  agency_name: '',
+  agency_description: '',
+  self_description: '',
+  phone: '',
+  tg_channel: '',
+  website: '',
+  youtube: '',
+  rutube: '',
+  dzen: '',
+  vk_video: '',
+  office_address: '',
+  photo_url: '',
+  logo_url: '',
+});
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
@@ -88,36 +107,49 @@ export default function PartnerForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const initialFormData: PartnerFormData = {
-    name: user?.first_name || '',
-    age: '',
-    profession: '',
-    city: '',
-    agency_name: '',
-    agency_description: '',
-    self_description: '',
-    phone: '',
-    tg_channel: '',
-    website: '',
-    youtube: '',
-    rutube: '',
-    dzen: '',
-    vk_video: '',
-    office_address: '',
-    photo_url: '',
-    logo_url: '',
-  };
-
-  const { 
-    formData, 
-    setFormData, 
-    updateField: updateFormField, 
-    clearSavedData,
-    lastSaved 
-  } = useFormPersistence<PartnerFormData>(initialFormData, {
-    key: `partner_form_${user?.id || 'guest'}`,
-    expirationDays: 7,
+  const [formData, setFormData] = useState<PartnerFormData>(() => {
+    const storageKey = `form_draft_partner_form_${user?.id || 'guest'}`;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Date.now() < parsed.expiresAt) {
+          return { ...getInitialFormData(user?.first_name || ''), ...parsed.data };
+        }
+        localStorage.removeItem(storageKey);
+      }
+    } catch (error) {
+      console.error('Error loading form data:', error);
+    }
+    return getInitialFormData(user?.first_name || '');
   });
+
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
+  // Auto-save to localStorage
+  useEffect(() => {
+    const storageKey = `form_draft_partner_form_${user?.id || 'guest'}`;
+    const saveData = () => {
+      try {
+        const storedData = {
+          data: formData,
+          timestamp: Date.now(),
+          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(storedData));
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Error saving form data:', error);
+      }
+    };
+    const timer = setTimeout(saveData, 500);
+    return () => clearTimeout(timer);
+  }, [formData, user?.id]);
+
+  const clearSavedData = useCallback(() => {
+    const storageKey = `form_draft_partner_form_${user?.id || 'guest'}`;
+    localStorage.removeItem(storageKey);
+  }, [user?.id]);
 
   // Загружаем категории для предпросмотра
   const { data: categoriesData } = useQuery({
@@ -140,7 +172,7 @@ export default function PartnerForm() {
   const [bannerZoomOpen, setBannerZoomOpen] = useState(false);
 
   const updateField = (field: string, value: string) => {
-    updateFormField(field as keyof PartnerFormData, value as never);
+    setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
