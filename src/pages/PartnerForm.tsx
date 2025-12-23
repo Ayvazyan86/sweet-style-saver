@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
 import { GlassCard } from '@/components/mini-app/GlassCard';
+import { ProgressCard } from '@/components/mini-app/ProgressCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 
 const getInitialFormData = (userName: string): PartnerFormData => ({
@@ -103,6 +104,9 @@ export default function PartnerForm() {
   const [direction, setDirection] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // For progressive block reveal (0 = show first 2, 1 = show all)
+  const [blockPage, setBlockPage] = useState(0);
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<CardTemplate | null>(null);
@@ -375,6 +379,7 @@ export default function PartnerForm() {
     if (step === currentStep) return;
     setDirection(step > currentStep ? 1 : -1);
     setCurrentStep(step);
+    setBlockPage(0); // Reset block page when changing steps
     hapticFeedback('light');
   };
 
@@ -386,6 +391,7 @@ export default function PartnerForm() {
       setDirection(1);
       hapticFeedback('light');
       setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
+      setBlockPage(0); // Reset block page for new step
     } else {
       hapticFeedback('error');
     }
@@ -487,19 +493,17 @@ export default function PartnerForm() {
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1:
+      case 1: {
+        const photoFilled = (formData.photo_url ? 1 : 0) + (formData.logo_url ? 1 : 0);
+        
         return (
-          <GlassCard className="overflow-hidden">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                <Camera className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Ваше фото</h2>
-                <p className="text-sm text-muted-foreground">Добавьте аватар и логотип</p>
-              </div>
-            </div>
-
+          <ProgressCard 
+            className="overflow-hidden"
+            title="Медиа"
+            filledCount={photoFilled}
+            totalCount={2}
+            delay={0}
+          >
             <div className="flex flex-col sm:flex-row gap-8 justify-center items-center py-6">
               <motion.div 
                 className="flex flex-col items-center gap-3"
@@ -567,49 +571,81 @@ export default function PartnerForm() {
             <p className="text-center text-xs text-muted-foreground mt-4">
               Рекомендуемый размер: 400×400 px, формат JPG или PNG
             </p>
-          </GlassCard>
+          </ProgressCard>
         );
+      }
 
-      case 2:
+      case 2: {
+        const block1Filled = (formData.name.trim().length >= 2 ? 1 : 0) + (formData.birthDate ? 1 : 0);
+        const block2Filled = formData.professions.length > 0 ? 1 : 0;
+        
         return (
           <div className="space-y-4">
-            <GlassCard>
-              <div className="grid grid-cols-[1fr_140px] gap-4">
-                <FormInput
-                  label={t('name')}
-                  required
-                  value={formData.name}
-                  onChange={e => updateField('name', e.target.value)}
-                  placeholder={t('enterName')}
-                  error={errors.name}
-                  success={formData.name.trim().length >= 2}
-                />
-                <DateInput
-                  label="Дата рождения"
-                  value={formData.birthDate}
-                  onChange={(val) => updateField('birthDate', val)}
-                  error={errors.birthDate}
-                  required
-                />
-              </div>
-            </GlassCard>
+            <AnimatePresence mode="wait">
+              {blockPage === 0 && (
+                <>
+                  <ProgressCard 
+                    key="block1"
+                    title="Основные данные"
+                    filledCount={block1Filled}
+                    totalCount={2}
+                    delay={0}
+                  >
+                    <div className="grid grid-cols-[1fr_140px] gap-4">
+                      <FormInput
+                        label={t('name')}
+                        required
+                        value={formData.name}
+                        onChange={e => updateField('name', e.target.value)}
+                        placeholder={t('enterName')}
+                        error={errors.name}
+                        success={formData.name.trim().length >= 2}
+                      />
+                      <DateInput
+                        label="Дата рождения"
+                        value={formData.birthDate}
+                        onChange={(val) => updateField('birthDate', val)}
+                        error={errors.birthDate}
+                        required
+                      />
+                    </div>
+                  </ProgressCard>
 
-            <GlassCard>
-              <ProfessionSelect
-                value={formData.professions}
-                onChange={(value) => setFormData(prev => ({ ...prev, professions: value }))}
-                error={errors.profession}
-                required
-                label="Профессия"
-              />
-            </GlassCard>
+                  <ProgressCard 
+                    key="block2"
+                    title="Род деятельности"
+                    filledCount={block2Filled}
+                    totalCount={1}
+                    delay={0.1}
+                  >
+                    <ProfessionSelect
+                      value={formData.professions}
+                      onChange={(value) => setFormData(prev => ({ ...prev, professions: value }))}
+                      error={errors.profession}
+                      required
+                      label="Профессия"
+                    />
+                  </ProgressCard>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         );
+      }
 
-      case 3:
+      case 3: {
+        const block1Filled = (formData.agency_name.trim().length >= 2 ? 1 : 0) + 
+                             (formData.agency_description.trim().length >= 10 ? 1 : 0);
+        const block2Filled = formData.self_description.trim().length >= 10 ? 1 : 0;
+        
         return (
           <div className="space-y-4">
-            <GlassCard>
+            <ProgressCard 
+              title="Агентство"
+              filledCount={block1Filled}
+              totalCount={2}
+              delay={0}
+            >
               <FormInput
                 label={t('agencyName')}
                 value={formData.agency_name}
@@ -627,9 +663,14 @@ export default function PartnerForm() {
                   success={formData.agency_description.trim().length >= 10}
                 />
               </div>
-            </GlassCard>
+            </ProgressCard>
 
-            <GlassCard>
+            <ProgressCard 
+              title="О себе"
+              filledCount={block2Filled}
+              totalCount={1}
+              delay={0.1}
+            >
               <FormInput
                 label={t('selfDescription')}
                 multiline
@@ -638,14 +679,24 @@ export default function PartnerForm() {
                 placeholder="Расскажите о себе и своём опыте..."
                 success={formData.self_description.trim().length >= 10}
               />
-            </GlassCard>
+            </ProgressCard>
           </div>
         );
+      }
 
-      case 4:
+      case 4: {
+        const block1Filled = (formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone) ? 1 : 0) +
+                             (tgVerified === true ? 1 : 0);
+        const block2Filled = formData.website && isValidUrl(formData.website) ? 1 : 0;
+        
         return (
           <div className="space-y-4">
-            <GlassCard>
+            <ProgressCard 
+              title="Связь"
+              filledCount={block1Filled}
+              totalCount={2}
+              delay={0}
+            >
               <FormInput
                 label={t('phone')}
                 type="tel"
@@ -681,9 +732,14 @@ export default function PartnerForm() {
                   </div>
                 )}
               </div>
-            </GlassCard>
+            </ProgressCard>
 
-            <GlassCard>
+            <ProgressCard 
+              title="Сайт"
+              filledCount={block2Filled}
+              totalCount={1}
+              delay={0.1}
+            >
               <FormInput
                 label={t('website')}
                 type="url"
@@ -694,14 +750,25 @@ export default function PartnerForm() {
                 error={errors.website}
                 success={!!formData.website && isValidUrl(formData.website)}
               />
-            </GlassCard>
+            </ProgressCard>
           </div>
         );
+      }
 
-      case 5:
+      case 5: {
+        const block1Filled = (formData.youtube && isValidYoutube(formData.youtube) ? 1 : 0) +
+                             (formData.rutube && isValidRutube(formData.rutube) ? 1 : 0);
+        const block2Filled = (formData.dzen && isValidDzen(formData.dzen) ? 1 : 0) +
+                             (formData.vk_video && isValidVkVideo(formData.vk_video) ? 1 : 0);
+        
         return (
           <div className="space-y-4">
-            <GlassCard>
+            <ProgressCard 
+              title="Международные"
+              filledCount={block1Filled}
+              totalCount={2}
+              delay={0}
+            >
               <FormInput
                 label="YouTube"
                 value={formData.youtube}
@@ -720,9 +787,14 @@ export default function PartnerForm() {
                   success={!!formData.rutube && isValidRutube(formData.rutube)}
                 />
               </div>
-            </GlassCard>
+            </ProgressCard>
 
-            <GlassCard>
+            <ProgressCard 
+              title="Российские"
+              filledCount={block2Filled}
+              totalCount={2}
+              delay={0.1}
+            >
               <FormInput
                 label="Яндекс Дзен"
                 value={formData.dzen}
@@ -741,14 +813,23 @@ export default function PartnerForm() {
                   success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
                 />
               </div>
-            </GlassCard>
+            </ProgressCard>
           </div>
         );
+      }
 
-      case 6:
+      case 6: {
+        const block1Filled = formData.city && cityVerified ? 1 : 0;
+        const block2Filled = formData.office_address && formData.office_address.trim().length >= 10 ? 1 : 0;
+        
         return (
           <div className="space-y-4">
-            <GlassCard>
+            <ProgressCard 
+              title="Город"
+              filledCount={block1Filled}
+              totalCount={1}
+              delay={0}
+            >
               <CityAutocomplete
                 label="Город проживания"
                 value={formData.city}
@@ -759,9 +840,14 @@ export default function PartnerForm() {
                 placeholder="Начните вводить название города"
                 error={errors.city}
               />
-            </GlassCard>
+            </ProgressCard>
 
-            <GlassCard>
+            <ProgressCard 
+              title="Адрес офиса"
+              filledCount={block2Filled}
+              totalCount={1}
+              delay={0.1}
+            >
               <AddressAutocomplete
                 label={t('officeAddress')}
                 value={formData.office_address}
@@ -770,9 +856,10 @@ export default function PartnerForm() {
                 hint="Адрес проверяется через Yandex Geocoder"
                 error={errors.office_address}
               />
-            </GlassCard>
+            </ProgressCard>
           </div>
         );
+      }
 
       case 7:
         return (
