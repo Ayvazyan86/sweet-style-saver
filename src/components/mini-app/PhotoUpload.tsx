@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Camera, X, Loader2, User } from 'lucide-react';
+import { Camera, X, Loader2, User, Image, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -7,9 +7,11 @@ interface PhotoUploadProps {
   value?: string;
   onChange: (url: string | null) => void;
   className?: string;
+  icon?: LucideIcon;
+  hideLabel?: boolean;
 }
 
-export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
+export function PhotoUpload({ value, onChange, className, icon: Icon = User, hideLabel = false }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +109,7 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
             />
           ) : (
             <div className="flex flex-col items-center gap-1 text-muted-foreground">
-              <User className="w-8 h-8" />
+              <Icon className="w-8 h-8" />
               <Camera className="w-4 h-4" />
             </div>
           )}
@@ -148,9 +150,11 @@ export function PhotoUpload({ value, onChange, className }: PhotoUploadProps) {
       />
 
       {/* Label */}
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        {value ? 'Нажмите чтобы изменить' : 'Нажмите чтобы загрузить'}
-      </p>
+      {!hideLabel && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          {value ? 'Нажмите чтобы изменить' : 'Нажмите чтобы загрузить'}
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-destructive flex items-center gap-1.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">

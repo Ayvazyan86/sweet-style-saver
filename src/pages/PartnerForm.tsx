@@ -13,7 +13,7 @@ import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
 import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
-import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate, ZoomIn } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate, ZoomIn, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -459,6 +459,8 @@ export default function PartnerForm() {
                     <PhotoUpload
                       value={formData.photo_url || undefined}
                       onChange={(url) => updateField('photo_url', url || '')}
+                      icon={User}
+                      hideLabel
                     />
                     <span className="text-sm text-muted-foreground">Аватарка</span>
                   </div>
@@ -466,7 +468,8 @@ export default function PartnerForm() {
                     <PhotoUpload
                       value={formData.logo_url || undefined}
                       onChange={(url) => updateField('logo_url', url || '')}
-                      className="border-dashed"
+                      icon={Image}
+                      hideLabel
                     />
                     <span className="text-sm text-muted-foreground">Логотип</span>
                   </div>
