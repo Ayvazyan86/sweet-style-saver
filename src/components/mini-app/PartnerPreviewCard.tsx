@@ -6,7 +6,8 @@ interface PartnerPreviewCardProps {
     name: string;
     birthDate?: string;
     age?: string;
-    profession: string;
+    profession?: string;
+    professions?: string[];
     city: string;
     agency_name: string;
     agency_description: string;
@@ -52,10 +53,10 @@ export function PartnerPreviewCard({ data, categories }: PartnerPreviewCardProps
           <h3 className="text-lg font-semibold text-foreground">
             {data.name || 'Имя не указано'}
           </h3>
-          {data.profession && (
+          {(data.profession || (data.professions && data.professions.length > 0)) && (
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <Briefcase className="w-3.5 h-3.5" />
-              {data.profession}
+              {data.profession || data.professions?.join(', ')}
             </p>
           )}
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">

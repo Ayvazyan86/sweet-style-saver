@@ -8,7 +8,7 @@ import { FormInput } from '@/components/mini-app/FormInput';
 const getInitialFormData = (userName: string): PartnerFormData => ({
   name: userName,
   birthDate: '',
-  profession: '',
+  professions: [],
   city: '',
   agency_name: '',
   agency_description: '',
@@ -26,6 +26,7 @@ const getInitialFormData = (userName: string): PartnerFormData => ({
 });
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
 import { ProfessionSelect } from '@/components/mini-app/ProfessionSelect';
+import { DateInput } from '@/components/mini-app/DateInput';
 import { SubmitButton } from '@/components/mini-app/SubmitButton';
 import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
@@ -76,7 +77,7 @@ const stepVariants = {
 interface PartnerFormData {
   name: string;
   birthDate: string;
-  profession: string;
+  professions: string[];
   city: string;
   agency_name: string;
   agency_description: string;
@@ -333,7 +334,7 @@ export default function PartnerForm() {
           newErrors.birthDate = 'Возраст должен быть от 16 до 100 лет';
         }
       }
-      if (!formData.profession.trim()) newErrors.profession = 'Выберите профессию';
+      if (formData.professions.length === 0) newErrors.profession = 'Выберите профессию';
       if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
     }
 
@@ -439,7 +440,7 @@ export default function PartnerForm() {
           user_id: profileId,
           name: formData.name,
           age: formData.birthDate ? Math.floor((new Date().getTime() - new Date(formData.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
-          profession: formData.profession,
+          profession: formData.professions.join(', ') || null,
           city: formData.city || null,
           agency_name: formData.agency_name || null,
           agency_description: formData.agency_description || null,
@@ -601,63 +602,22 @@ export default function PartnerForm() {
                   error={errors.name}
                   success={formData.name.trim().length >= 2}
                 />
-                <div>
-                  <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-2">
-                    Дата рождения
-                    <span className="text-primary">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.birthDate ? (() => {
-                      const d = new Date(formData.birthDate);
-                      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
-                    })() : ''}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^\d.]/g, '');
-                      const parts = val.split('.');
-                      if (parts.length === 3 && parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
-                        const day = parseInt(parts[0]);
-                        const month = parseInt(parts[1]);
-                        const year = parseInt(parts[2]);
-                        if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= new Date().getFullYear()) {
-                          updateField('birthDate', `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
-                        }
-                      } else {
-                        // Allow partial input, store as display value temporarily
-                        if (val.length <= 10) {
-                          // Format as user types: add dots automatically
-                          let formatted = val.replace(/\./g, '');
-                          if (formatted.length > 2) formatted = formatted.slice(0, 2) + '.' + formatted.slice(2);
-                          if (formatted.length > 5) formatted = formatted.slice(0, 5) + '.' + formatted.slice(5);
-                          e.target.value = formatted;
-                        }
-                      }
-                    }}
-                    placeholder="ДД.ММ.ГГГГ"
-                    className={cn(
-                      "w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground text-center",
-                      "hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none",
-                      errors.birthDate && "border-destructive focus:ring-destructive/30 focus:border-destructive"
-                    )}
-                  />
-                  {errors.birthDate && (
-                    <p className="text-xs text-destructive mt-1">{errors.birthDate}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-2">
-                  Выбрать профессию
-                  <span className="text-primary">*</span>
-                </label>
-                <ProfessionSelect
-                  value={formData.profession}
-                  onChange={(value) => updateField('profession', value)}
-                  error={errors.profession}
-                  required={false}
+                <DateInput
+                  label="Дата рождения"
+                  value={formData.birthDate}
+                  onChange={(val) => updateField('birthDate', val)}
+                  error={errors.birthDate}
+                  required
                 />
               </div>
+
+              <ProfessionSelect
+                value={formData.professions}
+                onChange={(value) => setFormData(prev => ({ ...prev, professions: value }))}
+                error={errors.profession}
+                required
+                label="Профессия"
+              />
 
               <CategorySelect
                 selectedIds={selectedCategories}
