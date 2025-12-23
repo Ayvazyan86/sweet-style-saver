@@ -454,16 +454,22 @@ export default function PartnerForm() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex gap-4 justify-center">
-                  <PhotoUpload
-                    value={formData.photo_url || undefined}
-                    onChange={(url) => updateField('photo_url', url || '')}
-                  />
-                  <PhotoUpload
-                    value={formData.logo_url || undefined}
-                    onChange={(url) => updateField('logo_url', url || '')}
-                    className="border-dashed"
-                  />
+                <div className="flex gap-6 justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <PhotoUpload
+                      value={formData.photo_url || undefined}
+                      onChange={(url) => updateField('photo_url', url || '')}
+                    />
+                    <span className="text-sm text-muted-foreground">Аватарка</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <PhotoUpload
+                      value={formData.logo_url || undefined}
+                      onChange={(url) => updateField('logo_url', url || '')}
+                      className="border-dashed"
+                    />
+                    <span className="text-sm text-muted-foreground">Логотип</span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-[1fr_80px] gap-4">
