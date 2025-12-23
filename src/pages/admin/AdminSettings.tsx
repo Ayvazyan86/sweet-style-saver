@@ -40,12 +40,16 @@ import {
   ShoppingCart,
   HelpCircle,
   Send,
-  Save
+  Save,
+  Briefcase,
+  Bell
 } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Category = Tables<'categories'>;
+type Profession = Tables<'professions'>;
 type CustomFieldDefinition = Tables<'custom_field_definitions'>;
+type NotificationTemplate = Tables<'notification_templates'>;
 
 export default function AdminSettings() {
   const queryClient = useQueryClient();
@@ -67,9 +71,17 @@ export default function AdminSettings() {
             <Tag className="h-4 w-4 mr-2" />
             Категории
           </TabsTrigger>
+          <TabsTrigger value="professions" className="data-[state=active]:bg-primary/10">
+            <Briefcase className="h-4 w-4 mr-2" />
+            Профессии
+          </TabsTrigger>
           <TabsTrigger value="telegram" className="data-[state=active]:bg-primary/10">
             <Send className="h-4 w-4 mr-2" />
             Telegram
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="data-[state=active]:bg-primary/10">
+            <Bell className="h-4 w-4 mr-2" />
+            Уведомления
           </TabsTrigger>
           <TabsTrigger value="partner-form" className="data-[state=active]:bg-primary/10">
             <Users className="h-4 w-4 mr-2" />
@@ -89,8 +101,16 @@ export default function AdminSettings() {
           <CategoriesSettings />
         </TabsContent>
 
+        <TabsContent value="professions">
+          <ProfessionsSettings />
+        </TabsContent>
+
         <TabsContent value="telegram">
           <TelegramSettings />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationsSettings />
         </TabsContent>
 
         <TabsContent value="partner-form">
@@ -446,6 +466,589 @@ function EditCategoryForm({
         </Button>
       </DialogFooter>
     </div>
+  );
+}
+
+// ========== Professions Settings ==========
+function ProfessionsSettings() {
+  const queryClient = useQueryClient();
+  const [editingProfession, setEditingProfession] = useState<Profession | null>(null);
+  const [deletingProfession, setDeletingProfession] = useState<Profession | null>(null);
+  const [isAddingProfession, setIsAddingProfession] = useState(false);
+  const [newProfession, setNewProfession] = useState({ name: '', name_en: '', slug: '' });
+
+  const { data: professions, isLoading } = useQuery({
+    queryKey: ['admin-professions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professions')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      
+      if (error) throw error;
+      return data as Profession[];
+    },
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async (profession: { name: string; name_en: string; slug: string }) => {
+      const maxSort = professions?.reduce((max, p) => Math.max(max, p.sort_order || 0), 0) || 0;
+      const { error } = await supabase
+        .from('professions')
+        .insert({
+          name: profession.name,
+          name_en: profession.name_en || null,
+          slug: profession.slug || profession.name.toLowerCase().replace(/\s+/g, '-'),
+          sort_order: maxSort + 1,
+          is_active: true
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
+      setIsAddingProfession(false);
+      setNewProfession({ name: '', name_en: '', slug: '' });
+      toast.success('Профессия добавлена');
+    },
+    onError: (error) => {
+      toast.error('Ошибка добавления', { description: error.message });
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (profession: Partial<Profession> & { id: string }) => {
+      const { error } = await supabase
+        .from('professions')
+        .update({
+          name: profession.name,
+          name_en: profession.name_en,
+          slug: profession.slug,
+          is_active: profession.is_active
+        })
+        .eq('id', profession.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
+      setEditingProfession(null);
+      toast.success('Профессия обновлена');
+    },
+    onError: (error) => {
+      toast.error('Ошибка обновления', { description: error.message });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('professions')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
+      setDeletingProfession(null);
+      toast.success('Профессия удалена');
+    },
+    onError: (error) => {
+      toast.error('Ошибка удаления', { description: error.message });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase
+        .from('professions')
+        .update({ is_active })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
+    },
+    onError: (error) => {
+      toast.error('Ошибка', { description: error.message });
+    },
+  });
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Профессии
+          </CardTitle>
+          <CardDescription>Управление списком профессий для партнёров</CardDescription>
+        </div>
+        <Button onClick={() => setIsAddingProfession(true)} className="bg-gradient-primary">
+          <Plus className="h-4 w-4 mr-2" />
+          Добавить
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : professions?.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Профессии не найдены
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {professions?.map((profession) => (
+              <div 
+                key={profession.id}
+                className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                  <div>
+                    <p className="font-medium text-foreground">{profession.name}</p>
+                    {profession.name_en && (
+                      <p className="text-sm text-muted-foreground">{profession.name_en}</p>
+                    )}
+                  </div>
+                  {!profession.is_active && (
+                    <Badge variant="secondary">Скрыта</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={profession.is_active ?? true}
+                    onCheckedChange={(checked) => toggleMutation.mutate({ id: profession.id, is_active: checked })}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingProfession(profession)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeletingProfession(profession)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Add Profession Dialog */}
+      <Dialog open={isAddingProfession} onOpenChange={setIsAddingProfession}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Добавить профессию</DialogTitle>
+            <DialogDescription>Создайте новую профессию</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="prof-name">Название (RU) *</Label>
+              <Input
+                id="prof-name"
+                value={newProfession.name}
+                onChange={(e) => setNewProfession({ ...newProfession, name: e.target.value })}
+                placeholder="Например: Риэлтор"
+                className="bg-input border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prof-name_en">Название (EN)</Label>
+              <Input
+                id="prof-name_en"
+                value={newProfession.name_en}
+                onChange={(e) => setNewProfession({ ...newProfession, name_en: e.target.value })}
+                placeholder="Например: Realtor"
+                className="bg-input border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prof-slug">Slug (URL)</Label>
+              <Input
+                id="prof-slug"
+                value={newProfession.slug}
+                onChange={(e) => setNewProfession({ ...newProfession, slug: e.target.value })}
+                placeholder="Например: realtor"
+                className="bg-input border-border"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddingProfession(false)}>
+              Отмена
+            </Button>
+            <Button
+              className="bg-gradient-primary"
+              onClick={() => addMutation.mutate(newProfession)}
+              disabled={!newProfession.name || addMutation.isPending}
+            >
+              {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Добавить'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Profession Dialog */}
+      <Dialog open={!!editingProfession} onOpenChange={() => setEditingProfession(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Редактировать профессию</DialogTitle>
+          </DialogHeader>
+          {editingProfession && (
+            <EditProfessionForm
+              profession={editingProfession}
+              onSave={(data) => editMutation.mutate({ id: editingProfession.id, ...data })}
+              onCancel={() => setEditingProfession(null)}
+              isLoading={editMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingProfession} onOpenChange={() => setDeletingProfession(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить профессию?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить профессию "{deletingProfession?.name}"?
+              Это может повлиять на существующие профили партнёров.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deletingProfession && deleteMutation.mutate(deletingProfession.id)}
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Удалить'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+function EditProfessionForm({ 
+  profession, 
+  onSave, 
+  onCancel,
+  isLoading 
+}: { 
+  profession: Profession;
+  onSave: (data: Partial<Profession>) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [formData, setFormData] = useState({
+    name: profession.name,
+    name_en: profession.name_en || '',
+    slug: profession.slug,
+    is_active: profession.is_active ?? true,
+  });
+
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="edit-prof-name">Название (RU) *</Label>
+        <Input
+          id="edit-prof-name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="bg-input border-border"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-prof-name_en">Название (EN)</Label>
+        <Input
+          id="edit-prof-name_en"
+          value={formData.name_en}
+          onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
+          className="bg-input border-border"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-prof-slug">Slug (URL)</Label>
+        <Input
+          id="edit-prof-slug"
+          value={formData.slug}
+          onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+          className="bg-input border-border"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="edit-prof-active">Активна</Label>
+        <Switch
+          id="edit-prof-active"
+          checked={formData.is_active}
+          onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+        />
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>
+          Отмена
+        </Button>
+        <Button
+          className="bg-gradient-primary"
+          onClick={() => onSave(formData)}
+          disabled={!formData.name || isLoading}
+        >
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Сохранить'}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+// ========== Notifications Settings ==========
+function NotificationsSettings() {
+  const queryClient = useQueryClient();
+  const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
+  const [editedTemplate, setEditedTemplate] = useState('');
+  const [editedName, setEditedName] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  const [testingTemplate, setTestingTemplate] = useState<string | null>(null);
+
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ['notification-templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notification_templates')
+        .select('*')
+        .order('key');
+      
+      if (error) throw error;
+      return data as NotificationTemplate[];
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, name, template, description }: { id: string; name: string; template: string; description: string }) => {
+      const { error } = await supabase
+        .from('notification_templates')
+        .update({ name, template, description })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-templates'] });
+      toast.success('Шаблон обновлён');
+      setEditingTemplate(null);
+    },
+    onError: (error) => {
+      toast.error('Ошибка', { description: error.message });
+    }
+  });
+
+  const testMutation = useMutation({
+    mutationFn: async ({ templateKey, template }: { templateKey: string; template: string }) => {
+      const { data, error } = await supabase.functions.invoke('test-notification', {
+        body: { templateKey, template }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Тестовое сообщение отправлено');
+      setTestingTemplate(null);
+    },
+    onError: (error) => {
+      toast.error('Ошибка отправки', { description: error.message });
+      setTestingTemplate(null);
+    }
+  });
+
+  const handleEdit = (template: NotificationTemplate) => {
+    setEditingTemplate(template);
+    setEditedName(template.name);
+    setEditedTemplate(template.template);
+    setEditedDescription(template.description || '');
+  };
+
+  const handleTest = (template: NotificationTemplate) => {
+    setTestingTemplate(template.key);
+    testMutation.mutate({ templateKey: template.key, template: template.template });
+  };
+
+  const handleSave = () => {
+    if (!editingTemplate) return;
+    
+    updateMutation.mutate({
+      id: editingTemplate.id,
+      name: editedName,
+      template: editedTemplate,
+      description: editedDescription,
+    });
+  };
+
+  const getVariablesForKey = (key: string): string[] => {
+    const variablesMap: Record<string, string[]> = {
+      'new_application': ['{name}', '{profession_line}', '{city_line}', '{phone_line}'],
+      'application_approved': ['{name}'],
+      'application_rejected': ['{name}', '{rejection_reason_line}'],
+      'new_order': ['{text}', '{city_line}', '{budget_line}', '{contact}'],
+      'new_question': ['{text}', '{details_line}'],
+    };
+    return variablesMap[key] || [];
+  };
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Шаблоны уведомлений
+        </CardTitle>
+        <CardDescription>
+          Управление шаблонами Telegram-уведомлений
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="bg-muted/50 rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">
+            Используйте переменные в фигурных скобках, например <code className="bg-muted px-1 rounded">{'{name}'}</code>. 
+            Переменные с суффиксом <code className="bg-muted px-1 rounded">_line</code> автоматически скрываются, если значение пустое.
+            Поддерживается HTML-разметка Telegram.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : templates?.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Шаблоны не найдены
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {templates?.map((template) => (
+              <div 
+                key={template.id}
+                className="p-4 rounded-lg border border-border bg-secondary/30"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-medium text-foreground">{template.name}</p>
+                    <p className="text-sm text-muted-foreground">{template.description}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleTest(template)}
+                      disabled={testingTemplate === template.key}
+                    >
+                      {testingTemplate === template.key ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-1" />
+                      )}
+                      Тест
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Редактировать
+                    </Button>
+                  </div>
+                </div>
+                <div className="bg-muted rounded-lg p-3">
+                  <pre className="text-sm whitespace-pre-wrap font-mono text-foreground">{template.template}</pre>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {getVariablesForKey(template.key).map((variable) => (
+                    <span key={variable} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                      {variable}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Edit Template Dialog */}
+      <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
+        <DialogContent className="bg-card border-border max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Редактирование шаблона</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tmpl-name">Название</Label>
+              <Input
+                id="tmpl-name"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tmpl-description">Описание</Label>
+              <Input
+                id="tmpl-description"
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tmpl-template">Шаблон сообщения</Label>
+              <textarea
+                id="tmpl-template"
+                value={editedTemplate}
+                onChange={(e) => setEditedTemplate(e.target.value)}
+                rows={10}
+                className="w-full font-mono text-sm rounded-md border border-border bg-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {editingTemplate && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  <span className="text-xs text-muted-foreground mr-1">Доступные переменные:</span>
+                  {getVariablesForKey(editingTemplate.key).map((variable) => (
+                    <button
+                      key={variable}
+                      type="button"
+                      className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded hover:bg-primary/20 transition-colors"
+                      onClick={() => setEditedTemplate(prev => prev + variable)}
+                    >
+                      {variable}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTemplate(null)}>
+              Отмена
+            </Button>
+            <Button onClick={handleSave} disabled={updateMutation.isPending} className="bg-gradient-primary">
+              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }
 
