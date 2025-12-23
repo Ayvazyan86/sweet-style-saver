@@ -144,6 +144,13 @@ export default function PartnerForm() {
       if (data.exists) {
         setTgVerified(true);
         setTgChannelInfo({ title: data.channel.title, type: data.channel.type });
+        
+        // Конвертируем в нормализованный формат @username после успешной проверки
+        const normalizedUsername = `@${data.channel.username}`;
+        if (channel !== normalizedUsername) {
+          setFormData(prev => ({ ...prev, tg_channel: normalizedUsername }));
+        }
+        
         // Убираем ошибку если канал найден
         if (errors.tg_channel) {
           setErrors(prev => ({ ...prev, tg_channel: '' }));
@@ -195,7 +202,38 @@ export default function PartnerForm() {
 
   const isValidTelegram = (tg: string) => {
     if (!tg) return true; // Опциональное поле
-    return /^@[a-zA-Z0-9_]{5,}$/.test(tg) || /^https?:\/\/(t\.me|telegram\.me)\//.test(tg);
+    // Принимаем форматы: @username, username, https://t.me/username, t.me/username
+    const trimmed = tg.trim();
+    // @username
+    if (/^@[a-zA-Z0-9_]{5,}$/.test(trimmed)) return true;
+    // username без @
+    if (/^[a-zA-Z0-9_]{5,}$/.test(trimmed)) return true;
+    // URL форматы
+    if (/^(https?:\/\/)?(t\.me|telegram\.me)\/[a-zA-Z0-9_]{5,}/.test(trimmed)) return true;
+    return false;
+  };
+
+  // Извлекает username из любого формата и возвращает @username
+  const extractTelegramUsername = (input: string): string => {
+    const trimmed = input.trim();
+    
+    // Уже в формате @username
+    if (/^@[a-zA-Z0-9_]+$/.test(trimmed)) {
+      return trimmed;
+    }
+    
+    // URL формат: https://t.me/username или t.me/username
+    const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(@)?([a-zA-Z0-9_]+)/);
+    if (urlMatch) {
+      return `@${urlMatch[2]}`;
+    }
+    
+    // Просто username без @
+    if (/^[a-zA-Z0-9_]{5,}$/.test(trimmed)) {
+      return `@${trimmed}`;
+    }
+    
+    return trimmed;
   };
 
   // Валидаторы для видеоплатформ
