@@ -11,20 +11,42 @@ import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
 import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
+import { FormStepTabs, FormStep } from '@/components/mini-app/FormStepTabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { motion, AnimatePresence } from 'framer-motion';
 
-import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate, ZoomIn, Image } from 'lucide-react';
+import { 
+  ArrowLeft, ArrowRight, User, Briefcase, Phone, 
+  Loader2, Eye, LayoutTemplate, ZoomIn, Image, Camera, 
+  Share2, Building2 
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 
-const STEPS = [
-  { id: 1, title: 'Личные данные', icon: User },
-  { id: 2, title: 'Деятельность', icon: Briefcase },
-  { id: 3, title: 'Контакты', icon: Phone },
-  { id: 4, title: 'Шаблон', icon: Eye },
+const STEPS: FormStep[] = [
+  { id: 1, title: 'Фото', shortTitle: 'Фото', icon: Camera },
+  { id: 2, title: 'Личные данные', shortTitle: 'Личное', icon: User },
+  { id: 3, title: 'Деятельность', shortTitle: 'Работа', icon: Briefcase },
+  { id: 4, title: 'Контакты', shortTitle: 'Контакты', icon: Share2 },
+  { id: 5, title: 'Шаблон', shortTitle: 'Шаблон', icon: LayoutTemplate },
 ];
+
+const stepVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 100 : -100,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 100 : -100,
+    opacity: 0,
+  }),
+};
 
 export default function PartnerForm() {
   const { t } = useLanguage();
@@ -32,6 +54,8 @@ export default function PartnerForm() {
   const navigate = useNavigate();
   
   const [currentStep, setCurrentStep] = useState(1);
+  const [direction, setDirection] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -88,13 +112,8 @@ export default function PartnerForm() {
 
   // Маска для телефона +7 (999) 123-45-67
   const formatPhone = (value: string) => {
-    // Убираем всё кроме цифр
     const digits = value.replace(/\D/g, '');
-    
-    // Начинаем с +7
     let formatted = '+7';
-    
-    // Если пользователь ввёл 8 или 7 в начале, пропускаем
     const phoneDigits = digits.startsWith('7') || digits.startsWith('8') 
       ? digits.slice(1) 
       : digits;
@@ -145,13 +164,11 @@ export default function PartnerForm() {
         setTgVerified(true);
         setTgChannelInfo({ title: data.channel.title, type: data.channel.type });
         
-        // Конвертируем в нормализованный формат @username после успешной проверки
         const normalizedUsername = `@${data.channel.username}`;
         if (channel !== normalizedUsername) {
           setFormData(prev => ({ ...prev, tg_channel: normalizedUsername }));
         }
         
-        // Убираем ошибку если канал найден
         if (errors.tg_channel) {
           setErrors(prev => ({ ...prev, tg_channel: '' }));
         }
@@ -184,14 +201,13 @@ export default function PartnerForm() {
 
   // Валидаторы
   const isValidPhone = (phone: string) => {
-    if (!phone) return true; // Опциональное поле
+    if (!phone) return true;
     const cleaned = phone.replace(/\D/g, '');
-    // Проверяем что есть ровно 11 цифр (7 + 10 цифр номера)
     return cleaned.length === 11 && cleaned.startsWith('7');
   };
 
   const isValidUrl = (url: string) => {
-    if (!url) return true; // Опциональное поле
+    if (!url) return true;
     try {
       new URL(url);
       return true;
@@ -201,42 +217,14 @@ export default function PartnerForm() {
   };
 
   const isValidTelegram = (tg: string) => {
-    if (!tg) return true; // Опциональное поле
-    // Принимаем форматы: @username, username, https://t.me/username, t.me/username
+    if (!tg) return true;
     const trimmed = tg.trim();
-    // @username
     if (/^@[a-zA-Z0-9_]{5,}$/.test(trimmed)) return true;
-    // username без @
     if (/^[a-zA-Z0-9_]{5,}$/.test(trimmed)) return true;
-    // URL форматы
     if (/^(https?:\/\/)?(t\.me|telegram\.me)\/[a-zA-Z0-9_]{5,}/.test(trimmed)) return true;
     return false;
   };
 
-  // Извлекает username из любого формата и возвращает @username
-  const extractTelegramUsername = (input: string): string => {
-    const trimmed = input.trim();
-    
-    // Уже в формате @username
-    if (/^@[a-zA-Z0-9_]+$/.test(trimmed)) {
-      return trimmed;
-    }
-    
-    // URL формат: https://t.me/username или t.me/username
-    const urlMatch = trimmed.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/(@)?([a-zA-Z0-9_]+)/);
-    if (urlMatch) {
-      return `@${urlMatch[2]}`;
-    }
-    
-    // Просто username без @
-    if (/^[a-zA-Z0-9_]{5,}$/.test(trimmed)) {
-      return `@${trimmed}`;
-    }
-    
-    return trimmed;
-  };
-
-  // Валидаторы для видеоплатформ
   const isValidYoutube = (url: string) => {
     if (!url) return true;
     return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(url);
@@ -266,6 +254,10 @@ export default function PartnerForm() {
     const newErrors: Record<string, string> = {};
     
     if (step === 1) {
+      // Фото опционально, но можно добавить проверку если нужно
+    }
+
+    if (step === 2) {
       if (!formData.name.trim()) newErrors.name = t('required');
       if (!formData.age || parseInt(formData.age) < 16 || parseInt(formData.age) > 100) {
         newErrors.age = 'Введите корректный возраст (16-100)';
@@ -273,7 +265,7 @@ export default function PartnerForm() {
       if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
     }
 
-    if (step === 3) {
+    if (step === 4) {
       if (formData.phone && !isValidPhone(formData.phone)) {
         newErrors.phone = 'Неверный формат телефона';
       }
@@ -304,16 +296,28 @@ export default function PartnerForm() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const goToStep = (step: number) => {
+    if (step === currentStep) return;
+    setDirection(step > currentStep ? 1 : -1);
+    setCurrentStep(step);
+    hapticFeedback('light');
+  };
+
   const nextStep = () => {
     if (validateStep(currentStep)) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps(prev => [...prev, currentStep]);
+      }
+      setDirection(1);
       hapticFeedback('light');
-      setCurrentStep(prev => Math.min(prev + 1, 4));
+      setCurrentStep(prev => Math.min(prev + 1, 5));
     } else {
       hapticFeedback('error');
     }
   };
 
   const prevStep = () => {
+    setDirection(-1);
     hapticFeedback('light');
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
@@ -413,208 +417,212 @@ export default function PartnerForm() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background p-4 pb-24">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => currentStep > 1 ? prevStep() : navigate('/')}
-          className="w-10 h-10 rounded-xl bg-card/50 flex items-center justify-center border border-white/10 hover:border-primary/50 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-foreground" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t('becomePartner')}</h1>
-          <p className="text-sm text-muted-foreground">Шаг {currentStep} из 4</p>
-        </div>
-      </div>
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <GlassCard className="overflow-hidden">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+                <Camera className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Ваше фото</h2>
+                <p className="text-sm text-muted-foreground">Добавьте аватар и логотип</p>
+              </div>
+            </div>
 
-      {/* Progress Steps */}
-      <div className="max-w-md mx-auto mb-8">
-        <div className="flex items-center justify-between relative">
-          {/* Progress Line */}
-          <div className="absolute left-0 right-0 top-5 h-0.5 bg-card">
-            <div 
-              className="h-full bg-gradient-primary transition-all duration-500"
-              style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
-            />
-          </div>
-          
-          {STEPS.map((step) => {
-            const Icon = step.icon;
-            const isCompleted = currentStep > step.id;
-            const isCurrent = currentStep === step.id;
-            
-            return (
-              <div key={step.id} className="relative z-10 flex flex-col items-center">
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300',
-                    isCompleted && 'bg-gradient-primary shadow-glow-primary',
-                    isCurrent && 'bg-primary/20 border-2 border-primary',
-                    !isCompleted && !isCurrent && 'bg-card border border-white/10'
-                  )}
-                >
-                  {isCompleted ? (
-                    <Check className="w-5 h-5 text-primary-foreground" />
-                  ) : (
-                    <Icon className={cn(
-                      'w-5 h-5',
-                      isCurrent ? 'text-primary' : 'text-muted-foreground'
-                    )} />
+            <div className="flex flex-col sm:flex-row gap-8 justify-center items-center py-6">
+              <motion.div 
+                className="flex flex-col items-center gap-3"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="relative">
+                  <PhotoUpload
+                    value={formData.photo_url || undefined}
+                    onChange={(url) => updateField('photo_url', url || '')}
+                    icon={User}
+                    hideLabel
+                    className="w-28 h-28"
+                  />
+                  {formData.photo_url && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success flex items-center justify-center"
+                    >
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </motion.div>
                   )}
                 </div>
-                <span className={cn(
-                  'text-xs mt-2 font-medium',
-                  isCurrent ? 'text-primary' : 'text-muted-foreground'
-                )}>
-                  {step.title}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                <span className="text-sm font-medium text-foreground">Ваше фото</span>
+                <span className="text-xs text-muted-foreground">Будет на карточке</span>
+              </motion.div>
 
-      <form onSubmit={handleSubmit} className="max-w-md mx-auto">
-        {/* Step 1: Личные данные */}
-        {currentStep === 1 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Личные данные</h2>
-                  <p className="text-sm text-muted-foreground">Расскажите о себе</p>
-                </div>
-              </div>
+              <div className="hidden sm:block w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent" />
 
-              <div className="space-y-4">
-                <div className="flex gap-6 justify-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <PhotoUpload
-                      value={formData.photo_url || undefined}
-                      onChange={(url) => updateField('photo_url', url || '')}
-                      icon={User}
-                      hideLabel
-                    />
-                    <span className="text-sm text-muted-foreground">Аватарка</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-2">
-                    <PhotoUpload
-                      value={formData.logo_url || undefined}
-                      onChange={(url) => updateField('logo_url', url || '')}
-                      icon={Image}
-                      hideLabel
-                    />
-                    <span className="text-sm text-muted-foreground">Логотип</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-[1fr_80px] gap-4">
-                  <FormInput
-                    label={t('name')}
-                    required
-                    value={formData.name}
-                    onChange={e => updateField('name', e.target.value)}
-                    placeholder={t('enterName')}
-                    error={errors.name}
-                    success={formData.name.trim().length >= 2}
+              <motion.div 
+                className="flex flex-col items-center gap-3"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="relative">
+                  <PhotoUpload
+                    value={formData.logo_url || undefined}
+                    onChange={(url) => updateField('logo_url', url || '')}
+                    icon={Image}
+                    hideLabel
+                    className="w-28 h-28"
                   />
-                  <FormInput
-                    label={t('age')}
-                    required
-                    type="number"
-                    min={16}
-                    max={100}
-                    value={formData.age}
-                    onChange={e => updateField('age', e.target.value)}
-                    placeholder="25"
-                    error={errors.age}
-                    success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
-                  />
+                  {formData.logo_url && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success flex items-center justify-center"
+                    >
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </motion.div>
+                  )}
                 </div>
+                <span className="text-sm font-medium text-foreground">Логотип</span>
+                <span className="text-xs text-muted-foreground">Опционально</span>
+              </motion.div>
+            </div>
 
-                <CityAutocomplete
-                  label={t('city')}
-                  value={formData.city}
-                  onChange={(value) => updateField('city', value)}
-                  placeholder={t('enterCity')}
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              Рекомендуемый размер: 400×400 px, формат JPG или PNG
+            </p>
+          </GlassCard>
+        );
+
+      case 2:
+        return (
+          <GlassCard>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+                <User className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Личные данные</h2>
+                <p className="text-sm text-muted-foreground">Расскажите о себе</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-[1fr_90px] gap-4">
+                <FormInput
+                  label={t('name')}
+                  required
+                  value={formData.name}
+                  onChange={e => updateField('name', e.target.value)}
+                  placeholder={t('enterName')}
+                  error={errors.name}
+                  success={formData.name.trim().length >= 2}
                 />
-
-                <CategorySelect
-                  selectedIds={selectedCategories}
-                  onChange={setSelectedCategories}
-                  multiple
-                  error={errors.categories}
+                <FormInput
+                  label={t('age')}
+                  required
+                  type="number"
+                  min={16}
+                  max={100}
+                  value={formData.age}
+                  onChange={e => updateField('age', e.target.value)}
+                  placeholder="25"
+                  error={errors.age}
+                  success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
                 />
               </div>
-            </GlassCard>
-          </div>
-        )}
 
-        {/* Step 2: Деятельность */}
-        {currentStep === 2 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+              <CityAutocomplete
+                label={t('city')}
+                value={formData.city}
+                onChange={(value) => updateField('city', value)}
+                placeholder={t('enterCity')}
+              />
+
+              <CategorySelect
+                selectedIds={selectedCategories}
+                onChange={setSelectedCategories}
+                multiple
+                error={errors.categories}
+              />
+            </div>
+          </GlassCard>
+        );
+
+      case 3:
+        return (
+          <GlassCard>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow-gold">
+                <Briefcase className="w-6 h-6 text-accent-foreground" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">О деятельности</h2>
+                <p className="text-sm text-muted-foreground">Опишите ваш опыт</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <FormInput
+                label="Профессия / Специализация"
+                value={formData.profession}
+                onChange={e => updateField('profession', e.target.value)}
+                placeholder="Например: Риелтор, Ипотечный брокер"
+                success={formData.profession.trim().length >= 2}
+              />
+
+              <FormInput
+                label={t('agencyName')}
+                value={formData.agency_name}
+                onChange={e => updateField('agency_name', e.target.value)}
+                placeholder="Название вашего агентства"
+                success={formData.agency_name.trim().length >= 2}
+              />
+
+              <FormInput
+                label={t('agencyDescription')}
+                multiline
+                value={formData.agency_description}
+                onChange={e => updateField('agency_description', e.target.value)}
+                placeholder="Чем занимается ваше агентство..."
+                success={formData.agency_description.trim().length >= 10}
+              />
+
+              <FormInput
+                label={t('selfDescription')}
+                multiline
+                value={formData.self_description}
+                onChange={e => updateField('self_description', e.target.value)}
+                placeholder="Расскажите о себе и своём опыте..."
+                success={formData.self_description.trim().length >= 10}
+              />
+            </div>
+          </GlassCard>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
             <GlassCard>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-white" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                  <Share2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">О деятельности</h2>
-                  <p className="text-sm text-muted-foreground">Опишите ваш опыт</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <FormInput
-                  label={t('agencyName')}
-                  value={formData.agency_name}
-                  onChange={e => updateField('agency_name', e.target.value)}
-                  placeholder="Название вашего агентства"
-                  success={formData.agency_name.trim().length >= 2}
-                />
-
-                <FormInput
-                  label={t('agencyDescription')}
-                  multiline
-                  value={formData.agency_description}
-                  onChange={e => updateField('agency_description', e.target.value)}
-                  placeholder="Чем занимается ваше агентство..."
-                  success={formData.agency_description.trim().length >= 10}
-                />
-
-                <FormInput
-                  label={t('selfDescription')}
-                  multiline
-                  value={formData.self_description}
-                  onChange={e => updateField('self_description', e.target.value)}
-                  placeholder="Расскажите о себе и своём опыте..."
-                  success={formData.self_description.trim().length >= 10}
-                />
-              </div>
-            </GlassCard>
-          </div>
-        )}
-
-        {/* Step 3: Контакты */}
-        {currentStep === 3 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                  <Phone className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Контактные данные</h2>
+                  <h2 className="text-xl font-bold text-foreground">Контакты</h2>
                   <p className="text-sm text-muted-foreground">Как с вами связаться</p>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <FormInput
                   label={t('phone')}
                   type="tel"
@@ -662,7 +670,22 @@ export default function PartnerForm() {
                   error={errors.website}
                   success={!!formData.website && isValidUrl(formData.website)}
                 />
+              </div>
+            </GlassCard>
 
+            {/* Video platforms */}
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
+                  <Eye className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Видеоплатформы</h2>
+                  <p className="text-sm text-muted-foreground">Ваши каналы</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
                 <FormInput
                   label="YouTube"
                   value={formData.youtube}
@@ -708,29 +731,57 @@ export default function PartnerForm() {
                   error={errors.tg_video}
                   success={!!formData.tg_video && isValidTgVideo(formData.tg_video)}
                 />
-
-                <AddressAutocomplete
-                  label={t('officeAddress')}
-                  value={formData.office_address}
-                  onChange={(address) => updateField('office_address', address)}
-                  placeholder="Москва, ул. Примерная, д. 1, офис 123"
-                  hint="Адрес проверяется через Yandex Geocoder"
-                />
               </div>
             </GlassCard>
-          </div>
-        )}
 
-        {/* Step 4: Шаблон карточки */}
-        {currentStep === 4 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* Office address */}
             <GlassCard>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-                  <LayoutTemplate className="w-5 h-5 text-white" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Выбор шаблона</h2>
+                  <h2 className="text-xl font-bold text-foreground">Адрес офиса</h2>
+                  <p className="text-sm text-muted-foreground">Где вас найти</p>
+                </div>
+              </div>
+
+              <AddressAutocomplete
+                label={t('officeAddress')}
+                value={formData.office_address}
+                onChange={(address) => updateField('office_address', address)}
+                placeholder="Москва, ул. Примерная, д. 1, офис 123"
+                hint="Адрес проверяется через Yandex Geocoder"
+              />
+            </GlassCard>
+
+            {/* Preview Card */}
+            <div className="animate-in fade-in duration-300">
+              <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                <Eye className="w-4 h-4" />
+                <span className="text-sm font-medium">Предпросмотр карточки</span>
+              </div>
+              <PartnerPreviewCard 
+                data={formData}
+                categories={selectedCategories.map(id => {
+                  const cat = categoriesData?.find(c => c.id === id);
+                  return { id, name: cat?.name || '' };
+                }).filter(c => c.name)}
+              />
+            </div>
+          </div>
+        );
+
+      case 5:
+        return (
+          <div className="space-y-6">
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+                  <LayoutTemplate className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Выбор шаблона</h2>
                   <p className="text-sm text-muted-foreground">Выберите дизайн вашей карточки</p>
                 </div>
               </div>
@@ -746,84 +797,136 @@ export default function PartnerForm() {
 
             {/* Banner Preview */}
             {selectedTemplate && (
-              <div className="mt-6 animate-fade-in">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Текст на баннере будет скорректирован на ваши данные после модерации анкеты
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3"
+              >
+                <p className="text-xs text-muted-foreground">
+                  Текст на баннере будет скорректирован на ваши данные после модерации
                 </p>
                 <div 
-                  className="aspect-video rounded-xl overflow-hidden border border-white/10 cursor-pointer relative group"
+                  className="aspect-video rounded-2xl overflow-hidden border border-border/50 cursor-pointer relative group shadow-lg"
                   onClick={() => setBannerZoomOpen(true)}
                 >
                   <img 
                     src={selectedTemplate.image_url} 
                     alt="Выбранный шаблон баннера"
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                    <ZoomIn className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg" />
                   </div>
                 </div>
                 
                 {/* Zoom Modal */}
                 <Dialog open={bannerZoomOpen} onOpenChange={setBannerZoomOpen}>
-                  <DialogContent className="max-w-4xl w-[95vw] p-2 bg-background/95 backdrop-blur-sm">
+                  <DialogContent className="max-w-4xl w-[95vw] p-2 bg-background/95 backdrop-blur-xl">
                     <img 
                       src={selectedTemplate.image_url} 
                       alt="Увеличенный баннер"
-                      className="w-full h-auto rounded-lg"
+                      className="w-full h-auto rounded-xl"
                     />
                   </DialogContent>
                 </Dialog>
-              </div>
+              </motion.div>
             )}
           </div>
-        )}
+        );
 
-        {/* Preview Card - only on step 3 */}
-        {currentStep === 3 && (
-          <div className="mt-6 animate-in fade-in duration-300">
-            <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-              <Eye className="w-4 h-4" />
-              <span className="text-sm font-medium">Так будет выглядеть ваша карточка</span>
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="max-w-lg mx-auto px-4 py-3">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => currentStep > 1 ? prevStep() : navigate('/')}
+              className="w-10 h-10 rounded-xl bg-card/80 flex items-center justify-center border border-border/50 hover:border-primary/50 hover:bg-card transition-all duration-200"
+            >
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-foreground">{t('becomePartner')}</h1>
+              <p className="text-xs text-muted-foreground">
+                Шаг {currentStep} из {STEPS.length} • {STEPS[currentStep - 1].title}
+              </p>
             </div>
-            <PartnerPreviewCard 
-              data={formData}
-              categories={selectedCategories.map(id => {
-                const cat = categoriesData?.find(c => c.id === id);
-                return { id, name: cat?.name || '' };
-              }).filter(c => c.name)}
-            />
           </div>
-        )}
-
-        {/* Navigation Buttons */}
-        <div className="mt-6 flex gap-3">
-          {currentStep > 1 && (
-            <button
-              type="button"
-              onClick={prevStep}
-              className="flex-1 py-4 px-6 rounded-xl bg-card/50 border border-white/10 text-foreground font-medium hover:border-primary/50 transition-colors"
-            >
-              Назад
-            </button>
-          )}
-          
-          {currentStep < 4 ? (
-            <button
-              type="button"
-              onClick={nextStep}
-              className="flex-1 py-4 px-6 rounded-xl bg-gradient-primary text-white font-semibold shadow-glow-primary hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-            >
-              Далее
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          ) : (
-            <SubmitButton loading={loading} className="flex-1">
-              {t('submit')}
-            </SubmitButton>
-          )}
         </div>
-      </form>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-4">
+        {/* Step Tabs */}
+        <FormStepTabs
+          steps={STEPS}
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+          onStepClick={goToStep}
+          allowNavigation={true}
+        />
+
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="mt-6">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={currentStep}
+              custom={direction}
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              {renderStepContent()}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Navigation Buttons */}
+          <div className="mt-8 flex gap-3 pb-8">
+            {currentStep > 1 && (
+              <motion.button
+                type="button"
+                onClick={prevStep}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex-1 py-4 px-6 rounded-xl bg-card/80 border border-border/50 text-foreground font-medium hover:border-primary/50 hover:bg-card transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Назад
+              </motion.button>
+            )}
+            
+            {currentStep < 5 ? (
+              <motion.button
+                type="button"
+                onClick={nextStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className={cn(
+                  "flex-1 py-4 px-6 rounded-xl font-semibold",
+                  "bg-gradient-to-r from-primary to-primary/80",
+                  "text-primary-foreground shadow-lg shadow-primary/20",
+                  "hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02]",
+                  "transition-all duration-200 flex items-center justify-center gap-2"
+                )}
+              >
+                Далее
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
+            ) : (
+              <SubmitButton loading={loading} className="flex-1">
+                {t('submit')}
+              </SubmitButton>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
