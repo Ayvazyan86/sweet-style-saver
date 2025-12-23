@@ -26,7 +26,7 @@ interface CityAutocompleteProps {
 export function CityAutocomplete({
   value,
   onChange,
-  label = 'Город',
+  label = 'Город проживания',
   placeholder = 'Введите название города',
   required = false,
   error,
@@ -36,6 +36,7 @@ export function CityAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [justSelected, setJustSelected] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +101,11 @@ export function CityAutocomplete({
 
   // Debounce effect
   useEffect(() => {
+    // Skip geocoding if we just selected a city
+    if (justSelected) {
+      return;
+    }
+    
     const timer = setTimeout(() => {
       if (inputValue !== value) {
         setIsVerified(false);
@@ -110,12 +116,13 @@ export function CityAutocomplete({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [inputValue, geocodeCity, value]);
+  }, [inputValue, geocodeCity, value, justSelected]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
     setIsVerified(false);
+    setJustSelected(false); // Reset flag when user types
     onChange(newValue, false);
   };
 
@@ -124,6 +131,7 @@ export function CityAutocomplete({
     setIsVerified(true);
     setShowDropdown(false);
     setSuggestions([]);
+    setJustSelected(true); // Prevent dropdown from reopening
     onChange(suggestion.name, true);
   };
 
