@@ -572,18 +572,8 @@ export default function PartnerForm() {
 
       case 2:
         return (
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                <User className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Личные данные</h2>
-                <p className="text-sm text-muted-foreground">Расскажите о себе</p>
-              </div>
-            </div>
-
-            <div className="space-y-5">
+          <div className="space-y-4">
+            <GlassCard>
               <div className="grid grid-cols-[1fr_140px] gap-4">
                 <FormInput
                   label={t('name')}
@@ -602,7 +592,9 @@ export default function PartnerForm() {
                   required
                 />
               </div>
+            </GlassCard>
 
+            <GlassCard>
               <ProfessionSelect
                 value={formData.professions}
                 onChange={(value) => setFormData(prev => ({ ...prev, professions: value }))}
@@ -610,25 +602,14 @@ export default function PartnerForm() {
                 required
                 label="Профессия"
               />
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         );
 
       case 3:
         return (
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-glow-gold">
-                <Briefcase className="w-6 h-6 text-accent-foreground" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">О деятельности</h2>
-                <p className="text-sm text-muted-foreground">Опишите ваш опыт</p>
-              </div>
-            </div>
-
-            <div className="space-y-5">
-
+          <div className="space-y-4">
+            <GlassCard>
               <FormInput
                 label={t('agencyName')}
                 value={formData.agency_name}
@@ -636,16 +617,19 @@ export default function PartnerForm() {
                 placeholder="Название вашего агентства"
                 success={formData.agency_name.trim().length >= 2}
               />
+              <div className="mt-4">
+                <FormInput
+                  label={t('agencyDescription')}
+                  multiline
+                  value={formData.agency_description}
+                  onChange={e => updateField('agency_description', e.target.value)}
+                  placeholder="Чем занимается ваше агентство..."
+                  success={formData.agency_description.trim().length >= 10}
+                />
+              </div>
+            </GlassCard>
 
-              <FormInput
-                label={t('agencyDescription')}
-                multiline
-                value={formData.agency_description}
-                onChange={e => updateField('agency_description', e.target.value)}
-                placeholder="Чем занимается ваше агентство..."
-                success={formData.agency_description.trim().length >= 10}
-              />
-
+            <GlassCard>
               <FormInput
                 label={t('selfDescription')}
                 multiline
@@ -654,24 +638,14 @@ export default function PartnerForm() {
                 placeholder="Расскажите о себе и своём опыте..."
                 success={formData.self_description.trim().length >= 10}
               />
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         );
 
       case 4:
         return (
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Share2 className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Контакты</h2>
-                <p className="text-sm text-muted-foreground">Как с вами связаться</p>
-              </div>
-            </div>
-
-            <div className="space-y-5">
+          <div className="space-y-4">
+            <GlassCard>
               <FormInput
                 label={t('phone')}
                 type="tel"
@@ -682,8 +656,7 @@ export default function PartnerForm() {
                 error={errors.phone}
                 success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
               />
-
-              <div className="space-y-2">
+              <div className="mt-4 space-y-2">
                 <FormInput
                   label={t('tgChannel')}
                   value={formData.tg_channel}
@@ -708,7 +681,9 @@ export default function PartnerForm() {
                   </div>
                 )}
               </div>
+            </GlassCard>
 
+            <GlassCard>
               <FormInput
                 label={t('website')}
                 type="url"
@@ -719,24 +694,14 @@ export default function PartnerForm() {
                 error={errors.website}
                 success={!!formData.website && isValidUrl(formData.website)}
               />
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         );
 
       case 5:
         return (
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
-                <Video className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Видеоплатформы</h2>
-                <p className="text-sm text-muted-foreground">Ваши каналы</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <GlassCard>
               <FormInput
                 label="YouTube"
                 value={formData.youtube}
@@ -745,16 +710,19 @@ export default function PartnerForm() {
                 error={errors.youtube}
                 success={!!formData.youtube && isValidYoutube(formData.youtube)}
               />
+              <div className="mt-4">
+                <FormInput
+                  label="Rutube"
+                  value={formData.rutube}
+                  onChange={e => updateField('rutube', e.target.value)}
+                  placeholder="https://rutube.ru/channel/..."
+                  error={errors.rutube}
+                  success={!!formData.rutube && isValidRutube(formData.rutube)}
+                />
+              </div>
+            </GlassCard>
 
-              <FormInput
-                label="Rutube"
-                value={formData.rutube}
-                onChange={e => updateField('rutube', e.target.value)}
-                placeholder="https://rutube.ru/channel/..."
-                error={errors.rutube}
-                success={!!formData.rutube && isValidRutube(formData.rutube)}
-              />
-
+            <GlassCard>
               <FormInput
                 label="Яндекс Дзен"
                 value={formData.dzen}
@@ -763,33 +731,24 @@ export default function PartnerForm() {
                 error={errors.dzen}
                 success={!!formData.dzen && isValidDzen(formData.dzen)}
               />
-
-              <FormInput
-                label="VK Видео"
-                value={formData.vk_video}
-                onChange={e => updateField('vk_video', e.target.value)}
-                placeholder="https://vk.com/video..."
-                error={errors.vk_video}
-                success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
-              />
-            </div>
-          </GlassCard>
+              <div className="mt-4">
+                <FormInput
+                  label="VK Видео"
+                  value={formData.vk_video}
+                  onChange={e => updateField('vk_video', e.target.value)}
+                  placeholder="https://vk.com/video..."
+                  error={errors.vk_video}
+                  success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
+                />
+              </div>
+            </GlassCard>
+          </div>
         );
 
       case 6:
         return (
-          <GlassCard>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Офис</h2>
-                <p className="text-sm text-muted-foreground">Где вас найти</p>
-              </div>
-            </div>
-
-            <div className="space-y-5">
+          <div className="space-y-4">
+            <GlassCard>
               <CityAutocomplete
                 label="Город проживания"
                 value={formData.city}
@@ -800,7 +759,9 @@ export default function PartnerForm() {
                 placeholder="Начните вводить название города"
                 error={errors.city}
               />
+            </GlassCard>
 
+            <GlassCard>
               <AddressAutocomplete
                 label={t('officeAddress')}
                 value={formData.office_address}
@@ -809,8 +770,8 @@ export default function PartnerForm() {
                 hint="Адрес проверяется через Yandex Geocoder"
                 error={errors.office_address}
               />
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         );
 
       case 7:
