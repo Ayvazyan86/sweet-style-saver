@@ -47,7 +47,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 
-// 7 steps now: Photo, Personal, Work, Contacts, Video, Office, Template
+// 8 steps: Photo, Personal, Work, Contacts, Video, Office, Template, Preview
 const STEPS: FormStep[] = [
   { id: 1, title: 'Фото', shortTitle: 'Фото', icon: Camera },
   { id: 2, title: 'Личные данные', shortTitle: 'Личное', icon: User },
@@ -56,6 +56,7 @@ const STEPS: FormStep[] = [
   { id: 5, title: 'Видеоплатформы', shortTitle: 'Видео', icon: Video },
   { id: 6, title: 'Офис', shortTitle: 'Офис', icon: Building2 },
   { id: 7, title: 'Шаблон', shortTitle: 'Шаблон', icon: LayoutTemplate },
+  { id: 8, title: 'Предпросмотр', shortTitle: 'Превью', icon: Eye },
 ];
 
 const stepVariants = {
@@ -777,53 +778,39 @@ export default function PartnerForm() {
 
       case 6:
         return (
-          <div className="space-y-6">
-            <GlassCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">Офис</h2>
-                  <p className="text-sm text-muted-foreground">Где вас найти</p>
-                </div>
+          <GlassCard>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
               </div>
-
-              <div className="space-y-5">
-                <CityAutocomplete
-                  label="Город проживания"
-                  value={formData.city}
-                  onChange={(value, verified) => {
-                    updateField('city', value);
-                    setCityVerified(verified || false);
-                  }}
-                  placeholder="Начните вводить название города"
-                  error={errors.city}
-                />
-
-                <AddressAutocomplete
-                  label={t('officeAddress')}
-                  value={formData.office_address}
-                  onChange={(address) => updateField('office_address', address)}
-                  placeholder="ул. Примерная, д. 1, офис 123"
-                  hint="Адрес проверяется через Yandex Geocoder"
-                  error={errors.office_address}
-                />
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Офис</h2>
+                <p className="text-sm text-muted-foreground">Где вас найти</p>
               </div>
-            </GlassCard>
+            </div>
 
-            {/* Preview Card */}
-            <div className="animate-in fade-in duration-300">
-              <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-                <Eye className="w-4 h-4" />
-                <span className="text-sm font-medium">Предпросмотр карточки</span>
-              </div>
-              <PartnerPreviewCard 
-                data={{...formData, tg_video: ''}}
-                categories={[]}
+            <div className="space-y-5">
+              <CityAutocomplete
+                label="Город проживания"
+                value={formData.city}
+                onChange={(value, verified) => {
+                  updateField('city', value);
+                  setCityVerified(verified || false);
+                }}
+                placeholder="Начните вводить название города"
+                error={errors.city}
+              />
+
+              <AddressAutocomplete
+                label={t('officeAddress')}
+                value={formData.office_address}
+                onChange={(address) => updateField('office_address', address)}
+                placeholder="ул. Примерная, д. 1, офис 123"
+                hint="Адрес проверяется через Yandex Geocoder"
+                error={errors.office_address}
               />
             </div>
-          </div>
+          </GlassCard>
         );
 
       case 7:
@@ -885,6 +872,28 @@ export default function PartnerForm() {
                 </Dialog>
               </motion.div>
             )}
+          </div>
+        );
+
+      case 8:
+        return (
+          <div className="space-y-6">
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                  <Eye className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Предпросмотр</h2>
+                  <p className="text-sm text-muted-foreground">Проверьте данные перед отправкой</p>
+                </div>
+              </div>
+              
+              <PartnerPreviewCard 
+                data={{...formData, tg_video: ''}}
+                categories={[]}
+              />
+            </GlassCard>
           </div>
         );
 
