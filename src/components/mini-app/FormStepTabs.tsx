@@ -15,6 +15,7 @@ interface FormStepTabsProps {
   completedSteps: number[];
   onStepClick?: (stepId: number) => void;
   allowNavigation?: boolean;
+  progressiveReveal?: boolean; // Show tabs in pairs as user progresses
 }
 
 export function FormStepTabs({
@@ -23,6 +24,7 @@ export function FormStepTabs({
   completedSteps,
   onStepClick,
   allowNavigation = true,
+  progressiveReveal = false,
 }: FormStepTabsProps) {
   const handleClick = (stepId: number) => {
     if (!allowNavigation) return;
@@ -32,16 +34,30 @@ export function FormStepTabs({
     }
   };
 
+  // Calculate which steps to show based on current step (in pairs)
+  // Steps 1-2: show steps 1-2
+  // Steps 3-4: show steps 1-4
+  // Steps 5-6: show steps 1-6
+  // Steps 7-8: show steps 1-8
+  const getVisibleStepsCount = () => {
+    if (!progressiveReveal) return steps.length;
+    const pairIndex = Math.ceil(currentStep / 2);
+    return Math.min(pairIndex * 2, steps.length);
+  };
+
+  const visibleStepsCount = getVisibleStepsCount();
+  const visibleSteps = steps.slice(0, visibleStepsCount);
+
   return (
     <div className="w-full">
       {/* Desktop/Tablet view - horizontal scrollable tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {steps.map((step, index) => {
+        {visibleSteps.map((step, index) => {
           const Icon = step.icon;
           const isCompleted = completedSteps.includes(step.id);
           const isCurrent = currentStep === step.id;
           const isAccessible = isCompleted || isCurrent || step.id === currentStep + 1;
-          const isLast = index === steps.length - 1;
+          const isLast = index === visibleSteps.length - 1;
 
           return (
             <motion.button

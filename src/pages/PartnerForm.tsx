@@ -998,6 +998,7 @@ export default function PartnerForm() {
           completedSteps={completedSteps}
           onStepClick={goToStep}
           allowNavigation={true}
+          progressiveReveal={true}
         />
 
         {/* Form Content */}
