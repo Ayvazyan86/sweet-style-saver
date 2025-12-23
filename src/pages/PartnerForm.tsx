@@ -335,7 +335,7 @@ export default function PartnerForm() {
         }
       }
       if (formData.professions.length === 0) newErrors.profession = 'Выберите профессию';
-      if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
+      
     }
 
     if (step === 4) {
@@ -617,13 +617,6 @@ export default function PartnerForm() {
                 error={errors.profession}
                 required
                 label="Профессия"
-              />
-
-              <CategorySelect
-                selectedIds={selectedCategories}
-                onChange={setSelectedCategories}
-                multiple
-                error={errors.categories}
               />
             </div>
           </GlassCard>
