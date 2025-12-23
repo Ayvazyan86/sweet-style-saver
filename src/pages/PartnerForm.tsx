@@ -11,7 +11,7 @@ import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
 import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
-import { TemplatePreviewCard } from '@/components/mini-app/TemplatePreviewCard';
+
 import { ArrowLeft, ArrowRight, User, Briefcase, Phone, Check, Loader2, Eye, LayoutTemplate } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -685,24 +685,25 @@ export default function PartnerForm() {
               />
             </GlassCard>
 
-            {/* Template Preview Card */}
-            <div className="mt-6">
-              <div className="flex items-center gap-2 mb-3 text-muted-foreground">
-                <Eye className="w-4 h-4" />
-                <span className="text-sm font-medium">Предпросмотр карточки с выбранным шаблоном</span>
+            {/* Banner Preview */}
+            {selectedTemplate && (
+              <div className="mt-6">
+                <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                  <Eye className="w-4 h-4" />
+                  <span className="text-sm font-medium">Выберите дизайн баннера</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Текст на дизайне будет скорректирован на ваш после модерации
+                </p>
+                <div className="aspect-video rounded-xl overflow-hidden border border-white/10">
+                  <img 
+                    src={selectedTemplate.image_url} 
+                    alt="Выбранный шаблон баннера"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
-              <TemplatePreviewCard 
-                partnerData={{
-                  name: formData.name,
-                  age: formData.age,
-                  profession: formData.profession,
-                  city: formData.city,
-                  agency_name: formData.agency_name,
-                  photo_url: formData.photo_url,
-                }}
-                template={selectedTemplate}
-              />
-            </div>
+            )}
           </div>
         )}
 
