@@ -90,21 +90,27 @@ export function PartnerPreviewCard({ data, categories }: PartnerPreviewCardProps
 
       {/* Agency */}
       {data.agency_name && (
-        <div className="bg-secondary/30 rounded-lg p-3">
-          <p className="text-sm font-medium text-foreground">{data.agency_name}</p>
-          {data.agency_description && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-              {data.agency_description}
-            </p>
-          )}
+        <div className="space-y-2 pt-2 border-t border-white/10">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Агентство</p>
+          <div className="bg-secondary/30 rounded-lg p-3">
+            <p className="text-sm font-medium text-foreground">{data.agency_name}</p>
+            {data.agency_description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {data.agency_description}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
       {/* Self description */}
       {data.self_description && (
-        <p className="text-sm text-muted-foreground line-clamp-3">
-          {data.self_description}
-        </p>
+        <div className="space-y-2 pt-2 border-t border-white/10">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">О себе</p>
+          <p className="text-sm text-muted-foreground line-clamp-3">
+            {data.self_description}
+          </p>
+        </div>
       )}
 
       {/* Contacts */}
