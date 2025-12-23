@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Check, Loader2, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,8 +38,35 @@ export function CityAutocomplete({
   const [showDropdown, setShowDropdown] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [justSelected, setJustSelected] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Update dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  // Update position on scroll/resize
+  useEffect(() => {
+    if (showDropdown) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition, true);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
+    }
+  }, [showDropdown, updateDropdownPosition]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -80,6 +108,7 @@ export function CityAutocomplete({
       if (data.suggestions && data.suggestions.length > 0) {
         setSuggestions(data.suggestions);
         setShowDropdown(true);
+        updateDropdownPosition();
         
         // Check for exact match
         if (data.exactMatch) {
@@ -97,7 +126,7 @@ export function CityAutocomplete({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [updateDropdownPosition]);
 
   // Debounce effect
   useEffect(() => {
@@ -139,6 +168,7 @@ export function CityAutocomplete({
 
   const handleFocus = () => {
     if (suggestions.length > 0) {
+      updateDropdownPosition();
       setShowDropdown(true);
     }
   };
@@ -155,8 +185,42 @@ export function CityAutocomplete({
     isVerified && 'border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-500/20'
   );
 
+  // Render dropdown via portal
+  const dropdownPortal = showDropdown && suggestions.length > 0 && createPortal(
+    <div
+      ref={dropdownRef}
+      className="fixed bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+      style={{ 
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 9999,
+      }}
+    >
+      {suggestions.map((suggestion, index) => (
+        <button
+          key={`${suggestion.name}-${index}`}
+          type="button"
+          onClick={() => handleSelectSuggestion(suggestion)}
+          className="w-full px-4 py-3 text-left hover:bg-secondary/50 transition-colors flex items-start gap-3 border-b border-white/5 last:border-b-0 bg-card"
+        >
+          <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="font-medium text-foreground">{suggestion.name}</div>
+            {suggestion.region && (
+              <div className="text-sm text-muted-foreground">
+                {suggestion.region}{suggestion.country && `, ${suggestion.country}`}
+              </div>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>,
+    document.body
+  );
+
   return (
-    <div className="space-y-2 relative z-20">
+    <div className="space-y-2" ref={containerRef}>
       {label && (
         <label className="text-sm font-medium text-foreground block">
           {label} {required && <span className="text-destructive">*</span>}
@@ -206,33 +270,7 @@ export function CityAutocomplete({
         </p>
       )}
 
-      {/* Dropdown */}
-      {showDropdown && suggestions.length > 0 && (
-        <div
-          ref={dropdownRef}
-          className="absolute left-0 right-0 z-[100] mt-1 bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-          style={{ top: '100%' }}
-        >
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={`${suggestion.name}-${index}`}
-              type="button"
-              onClick={() => handleSelectSuggestion(suggestion)}
-              className="w-full px-4 py-3 text-left hover:bg-secondary/50 transition-colors flex items-start gap-3 border-b border-white/5 last:border-b-0"
-            >
-              <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-foreground">{suggestion.name}</div>
-                {suggestion.region && (
-                  <div className="text-sm text-muted-foreground">
-                    {suggestion.region}{suggestion.country && `, ${suggestion.country}`}
-                  </div>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      {dropdownPortal}
     </div>
   );
 }
