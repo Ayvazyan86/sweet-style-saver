@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { User, MapPin, Briefcase, Phone, Globe, Youtube } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -26,7 +27,8 @@ interface PartnerPreviewCardProps {
   categories: { id: string; name: string }[];
 }
 
-export function PartnerPreviewCard({ data, categories }: PartnerPreviewCardProps) {
+export const PartnerPreviewCard = forwardRef<HTMLDivElement, PartnerPreviewCardProps>(
+  ({ data, categories }, ref) => {
   const hasContacts = data.phone || data.tg_channel || data.website;
   const hasVideoPlatforms = data.youtube || data.rutube || data.dzen || data.vk_video || data.tg_video;
 
@@ -183,4 +185,6 @@ export function PartnerPreviewCard({ data, categories }: PartnerPreviewCardProps
       )}
     </div>
   );
-}
+});
+
+PartnerPreviewCard.displayName = 'PartnerPreviewCard';

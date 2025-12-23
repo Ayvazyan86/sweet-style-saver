@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Check, X, ChevronDown, Search, 
@@ -99,16 +100,49 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Update dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
+  // Update position on scroll/resize when open
+  useEffect(() => {
+    if (isOpen) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition, true);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
+    }
+  }, [isOpen, updateDropdownPosition]);
+
   // Закрытие при клике вне
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -169,7 +203,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
   }
 
   return (
-    <div className="relative space-y-3" ref={dropdownRef}>
+    <div className="relative space-y-3" ref={containerRef}>
       {/* Header with label */}
       <label className="text-sm font-medium text-foreground flex items-center gap-2">
         Выбрать профессию <span className="text-destructive">*</span>
@@ -182,8 +216,12 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
 
       {/* Dropdown trigger */}
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          updateDropdownPosition();
+          setIsOpen(!isOpen);
+        }}
         className={cn(
           'w-full flex items-center justify-between px-4 py-3 rounded-xl',
           'bg-card/60 backdrop-blur-sm border transition-all duration-200',
@@ -222,11 +260,21 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
         )} />
       </button>
 
-      {/* Dropdown menu - opens upward */}
-      {isOpen && (
-        <div className="absolute z-50 left-0 right-0 bottom-full mb-2 bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+      {/* Dropdown menu via portal */}
+      {isOpen && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="fixed bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            zIndex: 9999,
+            maxHeight: '320px',
+          }}
+        >
           {/* Search */}
-          <div className="p-3 border-b border-border">
+          <div className="p-3 border-b border-border bg-card">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
@@ -253,7 +301,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
           )}
 
           {/* Options list */}
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-64 overflow-y-auto bg-card">
             {filteredCategories.length === 0 ? (
               <div className="px-4 py-8 text-center text-muted-foreground text-sm">
                 Профессии не найдены
@@ -269,7 +317,7 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
                     type="button"
                     onClick={() => toggleCategory(cat.id)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors bg-card',
                       isSelected 
                         ? 'bg-primary/10 text-primary' 
                         : 'hover:bg-secondary/50 text-foreground'
@@ -290,7 +338,8 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Selected categories chips (when closed) */}

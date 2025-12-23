@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Loader2, Check, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,12 +33,39 @@ export const AddressAutocomplete = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isValidated, setIsValidated] = useState<boolean | null>(null);
   const [justSelected, setJustSelected] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setInputValue(value);
   }, [value]);
+
+  // Update dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  // Update position on scroll/resize
+  useEffect(() => {
+    if (isOpen) {
+      updateDropdownPosition();
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      window.addEventListener('resize', updateDropdownPosition);
+      return () => {
+        window.removeEventListener('scroll', updateDropdownPosition, true);
+        window.removeEventListener('resize', updateDropdownPosition);
+      };
+    }
+  }, [isOpen, updateDropdownPosition]);
 
   // Close on click outside
   useEffect(() => {
@@ -77,7 +105,10 @@ export const AddressAutocomplete = ({
               details: s.region
             }));
             setSuggestions(addressSuggestions);
-            setIsOpen(addressSuggestions.length > 0);
+            if (addressSuggestions.length > 0) {
+              updateDropdownPosition();
+              setIsOpen(true);
+            }
             setIsValidated(null);
           } else {
             setSuggestions([]);
@@ -96,7 +127,7 @@ export const AddressAutocomplete = ({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [inputValue, value, justSelected]);
+  }, [inputValue, value, justSelected, updateDropdownPosition]);
 
   const handleSelect = (suggestion: AddressSuggestion) => {
     setInputValue(suggestion.fullAddress);
@@ -131,6 +162,7 @@ export const AddressAutocomplete = ({
 
   const handleFocus = () => {
     if (suggestions.length > 0) {
+      updateDropdownPosition();
       setIsOpen(true);
     }
   };
@@ -147,8 +179,46 @@ export const AddressAutocomplete = ({
     isValidated === true && 'border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-500/20'
   );
 
+  // Portal dropdown
+  const dropdownPortal = isOpen && suggestions.length > 0 && createPortal(
+    <div 
+      ref={dropdownRef}
+      className="fixed bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+      style={{
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 9999,
+      }}
+    >
+      <div className="max-h-48 overflow-y-auto">
+        {suggestions.map((suggestion, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => handleSelect(suggestion)}
+            className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-secondary/50 transition-colors border-b border-white/5 last:border-b-0 bg-card"
+          >
+            <MapPin className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">
+                {suggestion.address}
+              </p>
+              {suggestion.details && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {suggestion.details}
+                </p>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body
+  );
+
   return (
-    <div className="space-y-2 relative" ref={dropdownRef}>
+    <div className="space-y-2" ref={containerRef}>
       {label && (
         <label className="text-sm font-medium text-foreground block">
           {label}
@@ -195,33 +265,7 @@ export const AddressAutocomplete = ({
         </p>
       )}
 
-      {/* Dropdown */}
-      {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-card border border-white/10 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="max-h-48 overflow-y-auto">
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => handleSelect(suggestion)}
-                className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-secondary/50 transition-colors border-b border-white/5 last:border-b-0"
-              >
-                <MapPin className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {suggestion.address}
-                  </p>
-                  {suggestion.details && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {suggestion.details}
-                    </p>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {dropdownPortal}
     </div>
   );
 };
