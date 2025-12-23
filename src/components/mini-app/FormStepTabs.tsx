@@ -34,24 +34,28 @@ export function FormStepTabs({
     }
   };
 
-  // Calculate which steps to show based on current step (in pairs)
+  // Calculate which pair of steps to show based on current step
   // Steps 1-2: show steps 1-2
-  // Steps 3-4: show steps 1-4
-  // Steps 5-6: show steps 1-6
-  // Steps 7-8: show steps 1-8
-  const getVisibleStepsCount = () => {
-    if (!progressiveReveal) return steps.length;
+  // Steps 3-4: show steps 3-4
+  // Steps 5-6: show steps 5-6
+  // Steps 7-8: show steps 7-8
+  const getVisibleSteps = () => {
+    if (!progressiveReveal) return steps;
     const pairIndex = Math.ceil(currentStep / 2);
-    return Math.min(pairIndex * 2, steps.length);
+    const startIndex = (pairIndex - 1) * 2;
+    const endIndex = Math.min(startIndex + 2, steps.length);
+    return steps.slice(startIndex, endIndex);
   };
 
-  const visibleStepsCount = getVisibleStepsCount();
-  const visibleSteps = steps.slice(0, visibleStepsCount);
+  const visibleSteps = getVisibleSteps();
 
   return (
     <div className="w-full">
-      {/* Desktop/Tablet view - horizontal scrollable tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {/* Desktop/Tablet view - horizontal tabs */}
+      <div className={cn(
+        "flex gap-2 pb-2",
+        progressiveReveal && "w-full"
+      )}>
         {visibleSteps.map((step, index) => {
           const Icon = step.icon;
           const isCompleted = completedSteps.includes(step.id);
@@ -69,8 +73,9 @@ export function FormStepTabs({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.3 }}
               className={cn(
-                'relative flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl',
-                'border transition-all duration-300 min-w-[120px]',
+                'relative flex items-center gap-2 px-4 py-3 rounded-xl',
+                'border transition-all duration-300',
+                progressiveReveal ? 'flex-1 min-w-0 justify-center' : 'flex-shrink-0 min-w-[120px]',
                 'focus:outline-none focus:ring-2 focus:ring-primary/50',
                 isCurrent && [
                   'bg-gradient-to-br from-primary/20 to-primary/5',
