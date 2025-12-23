@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Search, Check, ChevronDown, Loader2 } from 'lucide-react';
@@ -77,35 +76,33 @@ export const ProfessionSelect = ({
 
   return (
     <div className="space-y-2">
-      <Label className={cn(
-        "text-sm font-medium text-foreground flex items-center gap-1",
-        error && "text-destructive"
-      )}>
-        Выбрать профессию
-        {required && <span className="text-primary">*</span>}
-      </Label>
-
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "w-full flex items-center justify-between px-4 py-3 rounded-xl text-left",
-              "bg-input/50 border border-border/50 transition-all duration-200",
-              "hover:border-primary/50 hover:bg-input/70",
-              "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary",
-              error && "border-destructive focus:ring-destructive/30 focus:border-destructive",
-              !displayValue && "text-muted-foreground"
-            )}
-          >
-            <span className="truncate">
-              {displayValue || 'Выберите профессию...'}
-            </span>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+            <Input
+              value={open ? search : displayValue}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (!open) setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
+              placeholder="Начните вводить профессию..."
+              className={cn(
+                "pl-9 pr-10 py-3 rounded-xl bg-input/50 border border-border/50",
+                "hover:border-primary/50 hover:bg-input/70",
+                "focus:ring-2 focus:ring-primary/30 focus:border-primary",
+                error && "border-destructive focus:ring-destructive/30 focus:border-destructive"
+              )}
+            />
             <ChevronDown className={cn(
-              "w-4 h-4 text-muted-foreground transition-transform duration-200",
+              "absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-transform duration-200",
               open && "rotate-180"
             )} />
-          </button>
+            {required && (
+              <span className="absolute -top-2 right-0 text-primary text-xs">*</span>
+            )}
+          </div>
         </PopoverTrigger>
 
         <PopoverContent 

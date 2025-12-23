@@ -7,7 +7,7 @@ import { FormInput } from '@/components/mini-app/FormInput';
 
 const getInitialFormData = (userName: string): PartnerFormData => ({
   name: userName,
-  age: '',
+  birthDate: '',
   profession: '',
   city: '',
   agency_name: '',
@@ -75,7 +75,7 @@ const stepVariants = {
 
 interface PartnerFormData {
   name: string;
-  age: string;
+  birthDate: string;
   profession: string;
   city: string;
   agency_name: string;
@@ -323,8 +323,15 @@ export default function PartnerForm() {
 
     if (step === 2) {
       if (!formData.name.trim()) newErrors.name = t('required');
-      if (!formData.age || parseInt(formData.age) < 16 || parseInt(formData.age) > 100) {
-        newErrors.age = 'Введите корректный возраст (16-100)';
+      if (!formData.birthDate) {
+        newErrors.birthDate = 'Укажите дату рождения';
+      } else {
+        const birthDate = new Date(formData.birthDate);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        if (age < 16 || age > 100) {
+          newErrors.birthDate = 'Возраст должен быть от 16 до 100 лет';
+        }
       }
       if (!formData.profession.trim()) newErrors.profession = 'Выберите профессию';
       if (selectedCategories.length === 0) newErrors.categories = t('selectCategories');
@@ -431,7 +438,7 @@ export default function PartnerForm() {
         .insert({
           user_id: profileId,
           name: formData.name,
-          age: parseInt(formData.age),
+          age: formData.birthDate ? Math.floor((new Date().getTime() - new Date(formData.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
           profession: formData.profession,
           city: formData.city || null,
           agency_name: formData.agency_name || null,
@@ -584,28 +591,80 @@ export default function PartnerForm() {
             </div>
 
             <div className="space-y-5">
-              <div className="grid grid-cols-[1fr_90px] gap-4">
-                <FormInput
-                  label={t('name')}
-                  required
-                  value={formData.name}
-                  onChange={e => updateField('name', e.target.value)}
-                  placeholder={t('enterName')}
-                  error={errors.name}
-                  success={formData.name.trim().length >= 2}
-                />
-                <FormInput
-                  label={t('age')}
-                  required
-                  type="number"
-                  min={16}
-                  max={100}
-                  value={formData.age}
-                  onChange={e => updateField('age', e.target.value)}
-                  placeholder="25"
-                  error={errors.age}
-                  success={!!formData.age && parseInt(formData.age) >= 16 && parseInt(formData.age) <= 100}
-                />
+              <FormInput
+                label={t('name')}
+                required
+                value={formData.name}
+                onChange={e => updateField('name', e.target.value)}
+                placeholder={t('enterName')}
+                error={errors.name}
+                success={formData.name.trim().length >= 2}
+              />
+
+              <div>
+                <label className="text-sm font-medium text-foreground flex items-center gap-1 mb-2">
+                  Дата рождения
+                  <span className="text-primary">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    value={formData.birthDate ? new Date(formData.birthDate).getDate().toString() : ''}
+                    onChange={(e) => {
+                      const day = e.target.value;
+                      const currentDate = formData.birthDate ? new Date(formData.birthDate) : new Date();
+                      const month = formData.birthDate ? currentDate.getMonth() : 0;
+                      const year = formData.birthDate ? currentDate.getFullYear() : 1990;
+                      if (day) {
+                        updateField('birthDate', `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+                      }
+                    }}
+                    className="w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  >
+                    <option value="">День</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={formData.birthDate ? (new Date(formData.birthDate).getMonth() + 1).toString() : ''}
+                    onChange={(e) => {
+                      const month = e.target.value;
+                      const currentDate = formData.birthDate ? new Date(formData.birthDate) : new Date();
+                      const day = formData.birthDate ? currentDate.getDate() : 1;
+                      const year = formData.birthDate ? currentDate.getFullYear() : 1990;
+                      if (month) {
+                        updateField('birthDate', `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+                      }
+                    }}
+                    className="w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  >
+                    <option value="">Месяц</option>
+                    {['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'].map((month, i) => (
+                      <option key={i} value={i + 1}>{month}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={formData.birthDate ? new Date(formData.birthDate).getFullYear().toString() : ''}
+                    onChange={(e) => {
+                      const year = e.target.value;
+                      const currentDate = formData.birthDate ? new Date(formData.birthDate) : new Date();
+                      const day = formData.birthDate ? currentDate.getDate() : 1;
+                      const month = formData.birthDate ? currentDate.getMonth() : 0;
+                      if (year) {
+                        updateField('birthDate', `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+                      }
+                    }}
+                    className="w-full px-3 py-3 rounded-xl bg-input/50 border border-border/50 text-foreground hover:border-primary/50 focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  >
+                    <option value="">Год</option>
+                    {Array.from({ length: 85 }, (_, i) => new Date().getFullYear() - 16 - i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                {errors.birthDate && (
+                  <p className="text-xs text-destructive mt-1">{errors.birthDate}</p>
+                )}
               </div>
 
               <ProfessionSelect
@@ -639,13 +698,6 @@ export default function PartnerForm() {
             </div>
 
             <div className="space-y-5">
-              <FormInput
-                label="Профессия / Специализация"
-                value={formData.profession}
-                onChange={e => updateField('profession', e.target.value)}
-                placeholder="Например: Риелтор, Ипотечный брокер"
-                success={formData.profession.trim().length >= 2}
-              />
 
               <FormInput
                 label={t('agencyName')}
