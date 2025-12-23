@@ -11,9 +11,12 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  Bot,
+  UserPlus,
+  Calendar
 } from 'lucide-react';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, subDays, startOfDay, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 interface StatsCardProps {
@@ -150,7 +153,52 @@ export default function AdminDashboard() {
     },
   });
 
-  const isLoading = loadingApplications || loadingPartners || loadingOrders || loadingQuestions;
+  // Fetch bot usage stats (profiles = bot users)
+  const { data: botStats, isLoading: loadingBot } = useQuery({
+    queryKey: ['admin-stats-bot'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, created_at');
+      
+      if (error) throw error;
+      
+      const total = data.length;
+      const now = new Date();
+      
+      // Today
+      const today = startOfDay(now);
+      const todayCount = data.filter(p => new Date(p.created_at!) >= today).length;
+      
+      // Last 7 days
+      const weekAgo = subDays(now, 7);
+      const weekCount = data.filter(p => new Date(p.created_at!) >= weekAgo).length;
+      
+      // Last 30 days
+      const monthAgo = subDays(now, 30);
+      const monthCount = data.filter(p => new Date(p.created_at!) >= monthAgo).length;
+      
+      // Previous week for trend
+      const twoWeeksAgo = subDays(now, 14);
+      const prevWeekCount = data.filter(p => {
+        const date = new Date(p.created_at!);
+        return date >= twoWeeksAgo && date < weekAgo;
+      }).length;
+      
+      const trend = prevWeekCount > 0 ? Math.round(((weekCount - prevWeekCount) / prevWeekCount) * 100) : 0;
+      
+      // Daily stats for last 7 days
+      const last7Days = eachDayOfInterval({ start: weekAgo, end: now });
+      const dailyStats = last7Days.map(day => ({
+        date: format(day, 'dd.MM', { locale: ru }),
+        count: data.filter(p => isSameDay(new Date(p.created_at!), day)).length
+      }));
+      
+      return { total, todayCount, weekCount, monthCount, trend, dailyStats };
+    },
+  });
+
+  const isLoading = loadingApplications || loadingPartners || loadingOrders || loadingQuestions || loadingBot;
 
   if (isLoading) {
     return (
@@ -166,6 +214,83 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold text-foreground">Статистика</h1>
         <p className="text-muted-foreground">Обзор данных системы</p>
       </div>
+
+      {/* Bot stats - NEW */}
+      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 rounded-xl bg-primary/20">
+              <Bot className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Статистика бота</h2>
+              <p className="text-sm text-muted-foreground">Запуски и пользователи Telegram бота</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-card/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-4 w-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Всего</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{botStats?.total || 0}</p>
+            </div>
+            <div className="bg-card/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <UserPlus className="h-4 w-4 text-success" />
+                <span className="text-xs text-muted-foreground">Сегодня</span>
+              </div>
+              <p className="text-2xl font-bold text-success">{botStats?.todayCount || 0}</p>
+            </div>
+            <div className="bg-card/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Calendar className="h-4 w-4 text-accent-foreground" />
+                <span className="text-xs text-muted-foreground">За неделю</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{botStats?.weekCount || 0}</p>
+              {botStats?.trend !== 0 && (
+                <div className="flex items-center gap-1 mt-1">
+                  <TrendingUp className={`h-3 w-3 ${(botStats?.trend || 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
+                  <span className={`text-xs ${(botStats?.trend || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {(botStats?.trend || 0) >= 0 ? '+' : ''}{botStats?.trend}%
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="bg-card/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-xs text-muted-foreground">За месяц</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{botStats?.monthCount || 0}</p>
+            </div>
+          </div>
+
+          {/* Daily chart */}
+          {botStats?.dailyStats && botStats.dailyStats.some(d => d.count > 0) && (
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <p className="text-xs text-muted-foreground mb-3">Новые пользователи за последние 7 дней</p>
+              <div className="flex items-end gap-1 h-16">
+                {botStats.dailyStats.map((day, i) => {
+                  const maxCount = Math.max(...botStats.dailyStats.map(d => d.count), 1);
+                  const height = (day.count / maxCount) * 100;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div 
+                        className="w-full bg-primary/60 rounded-t transition-all hover:bg-primary"
+                        style={{ height: `${Math.max(height, 4)}%` }}
+                        title={`${day.date}: ${day.count}`}
+                      />
+                      <span className="text-[10px] text-muted-foreground">{day.date}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Main stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
