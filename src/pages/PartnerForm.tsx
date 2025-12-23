@@ -45,7 +45,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+
 
 // 7 steps now: Photo, Personal, Work, Contacts, Video, Office, Template
 const STEPS: FormStep[] = [
@@ -152,17 +152,8 @@ export default function PartnerForm() {
     localStorage.removeItem(storageKey);
   }, [user?.id]);
 
-  // Загружаем категории для предпросмотра
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('is_active', true);
-      return data || [];
-    },
-  });
+  // State для валидации города
+  const [cityVerified, setCityVerified] = useState(false);
   
   // Состояние для проверки Telegram канала
   const [tgChecking, setTgChecking] = useState(false);
@@ -361,6 +352,17 @@ export default function PartnerForm() {
       }
       if (formData.vk_video && !isValidVkVideo(formData.vk_video)) {
         newErrors.vk_video = 'Введите ссылку vk.com/video или vkvideo.ru';
+      }
+    }
+
+    if (step === 6) {
+      // Валидация города - должен быть подтверждён через геокодер
+      if (formData.city && !cityVerified) {
+        newErrors.city = 'Выберите город из списка предложений';
+      }
+      // Валидация адреса офиса - минимальная длина если указан
+      if (formData.office_address && formData.office_address.trim().length < 10) {
+        newErrors.office_address = 'Укажите более подробный адрес';
       }
     }
     
@@ -789,18 +791,23 @@ export default function PartnerForm() {
 
               <div className="space-y-5">
                 <CityAutocomplete
-                  label={t('city')}
+                  label="Город проживания"
                   value={formData.city}
-                  onChange={(value) => updateField('city', value)}
-                  placeholder={t('enterCity')}
+                  onChange={(value, verified) => {
+                    updateField('city', value);
+                    setCityVerified(verified || false);
+                  }}
+                  placeholder="Начните вводить название города"
+                  error={errors.city}
                 />
 
                 <AddressAutocomplete
                   label={t('officeAddress')}
                   value={formData.office_address}
                   onChange={(address) => updateField('office_address', address)}
-                  placeholder="Москва, ул. Примерная, д. 1, офис 123"
+                  placeholder="ул. Примерная, д. 1, офис 123"
                   hint="Адрес проверяется через Yandex Geocoder"
+                  error={errors.office_address}
                 />
               </div>
             </GlassCard>

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface AddressAutocompleteProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, verified?: boolean) => void;
   label?: string;
   placeholder?: string;
   hint?: string;
@@ -89,7 +89,7 @@ export const AddressAutocomplete = ({
       ? `${suggestion.address}, ${suggestion.details}`
       : suggestion.address;
     setInputValue(fullAddress);
-    onChange(fullAddress);
+    onChange(fullAddress, true);
     setIsOpen(false);
     setSuggestions([]);
     setIsValidated(true);
@@ -100,7 +100,7 @@ export const AddressAutocomplete = ({
     setInputValue(newValue);
     setIsValidated(null);
     if (newValue !== value) {
-      onChange(newValue);
+      onChange(newValue, false);
     }
   };
 
