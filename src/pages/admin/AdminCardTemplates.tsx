@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Plus, Trash2, Upload, Loader2 } from "lucide-react";
+import { Trash2, Upload, Loader2, ImagePlus, X } from "lucide-react";
 
 interface CardTemplate {
   id: string;
@@ -14,11 +12,17 @@ interface CardTemplate {
   image_url: string;
 }
 
+interface UploadingFile {
+  id: string;
+  file: File;
+  preview: string;
+  status: 'pending' | 'uploading' | 'done' | 'error';
+}
+
 export default function AdminCardTemplates() {
   const queryClient = useQueryClient();
-  const [uploading, setUploading] = useState(false);
-  const [name, setName] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ["card-templates-admin"],
@@ -30,25 +34,6 @@ export default function AdminCardTemplates() {
 
       if (error) throw error;
       return data as CardTemplate[];
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("card_templates").insert([{ 
-        name, 
-        image_url: imageUrl 
-      }]);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["card-templates-admin"] });
-      toast.success("Шаблон добавлен");
-      setName("");
-      setImageUrl("");
-    },
-    onError: (error) => {
-      toast.error("Ошибка: " + error.message);
     },
   });
 
@@ -66,52 +51,109 @@ export default function AdminCardTemplates() {
     },
   });
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadAndCreateTemplate = async (file: File): Promise<void> => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `template_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `card-templates/${fileName}`;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Пожалуйста, загрузите изображение");
-      return;
-    }
+    const { error: uploadError } = await supabase.storage
+      .from("partner-photos")
+      .upload(filePath, file);
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Файл слишком большой (макс. 5MB)");
-      return;
-    }
+    if (uploadError) throw uploadError;
 
-    setUploading(true);
-    try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `template_${Date.now()}.${fileExt}`;
-      const filePath = `card-templates/${fileName}`;
+    const { data: urlData } = supabase.storage
+      .from("partner-photos")
+      .getPublicUrl(filePath);
 
-      const { error: uploadError } = await supabase.storage
-        .from("partner-photos")
-        .upload(filePath, file);
+    // Генерируем имя из имени файла (без расширения)
+    const templateName = file.name.replace(/\.[^/.]+$/, "");
 
-      if (uploadError) throw uploadError;
+    const { error: insertError } = await supabase.from("card_templates").insert([{ 
+      name: templateName, 
+      image_url: urlData.publicUrl 
+    }]);
 
-      const { data: urlData } = supabase.storage
-        .from("partner-photos")
-        .getPublicUrl(filePath);
-
-      setImageUrl(urlData.publicUrl);
-      toast.success("Изображение загружено");
-    } catch (error: any) {
-      toast.error("Ошибка загрузки: " + error.message);
-    } finally {
-      setUploading(false);
-    }
+    if (insertError) throw insertError;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !imageUrl) {
-      toast.error("Заполните название и загрузите изображение");
+  const processFiles = async (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith("image/"));
+    
+    if (imageFiles.length === 0) {
+      toast.error("Выберите изображения");
       return;
     }
-    createMutation.mutate();
+
+    const newUploadingFiles: UploadingFile[] = imageFiles.map(file => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      preview: URL.createObjectURL(file),
+      status: 'pending' as const,
+    }));
+
+    setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
+
+    for (const uploadFile of newUploadingFiles) {
+      setUploadingFiles(prev => 
+        prev.map(f => f.id === uploadFile.id ? { ...f, status: 'uploading' } : f)
+      );
+
+      try {
+        await uploadAndCreateTemplate(uploadFile.file);
+        setUploadingFiles(prev => 
+          prev.map(f => f.id === uploadFile.id ? { ...f, status: 'done' } : f)
+        );
+      } catch (error: any) {
+        setUploadingFiles(prev => 
+          prev.map(f => f.id === uploadFile.id ? { ...f, status: 'error' } : f)
+        );
+        toast.error(`Ошибка загрузки ${uploadFile.file.name}: ${error.message}`);
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["card-templates-admin"] });
+    
+    // Очищаем успешно загруженные через 2 секунды
+    setTimeout(() => {
+      setUploadingFiles(prev => prev.filter(f => f.status !== 'done'));
+    }, 2000);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      processFiles(Array.from(files));
+    }
+    e.target.value = '';
+  };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    processFiles(files);
+  }, []);
+
+  const removeUploadingFile = (id: string) => {
+    setUploadingFiles(prev => {
+      const file = prev.find(f => f.id === id);
+      if (file) {
+        URL.revokeObjectURL(file.preview);
+      }
+      return prev.filter(f => f.id !== id);
+    });
   };
 
   return (
@@ -123,57 +165,86 @@ export default function AdminCardTemplates() {
         </p>
       </div>
 
-      {/* Add Form */}
+      {/* Upload Zone */}
       <Card>
         <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Название</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Название шаблона"
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`
+              border-2 border-dashed rounded-xl p-8 text-center transition-all
+              ${isDragging 
+                ? 'border-primary bg-primary/10' 
+                : 'border-border hover:border-primary/50 hover:bg-muted/50'
+              }
+            `}
+          >
+            <ImagePlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium mb-2">
+              Перетащите изображения сюда
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              или нажмите кнопку ниже для выбора файлов
+            </p>
+            <label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
               />
-            </div>
+              <Button type="button" variant="outline" asChild>
+                <span>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Выбрать файлы
+                </span>
+              </Button>
+            </label>
+          </div>
 
-            <div className="space-y-2">
-              <Label>Изображение</Label>
-              <div className="flex gap-2">
-                <label className="flex-1">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
+          {/* Uploading Files Preview */}
+          {uploadingFiles.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+              {uploadingFiles.map(file => (
+                <div 
+                  key={file.id} 
+                  className="relative aspect-video rounded-lg overflow-hidden border border-border"
+                >
+                  <img 
+                    src={file.preview} 
+                    alt="" 
+                    className="w-full h-full object-cover"
                   />
-                  <Button type="button" variant="outline" className="w-full" disabled={uploading} asChild>
-                    <span>
-                      {uploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Upload className="h-4 w-4 mr-2" />
-                      )}
-                      {uploading ? "Загрузка..." : "Выбрать файл"}
-                    </span>
-                  </Button>
-                </label>
-              </div>
-              {imageUrl && (
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="mt-2 max-h-40 rounded-lg border border-border object-contain"
-                />
-              )}
+                  <div className={`
+                    absolute inset-0 flex items-center justify-center
+                    ${file.status === 'uploading' ? 'bg-background/80' : ''}
+                    ${file.status === 'done' ? 'bg-green-500/20' : ''}
+                    ${file.status === 'error' ? 'bg-destructive/20' : ''}
+                  `}>
+                    {file.status === 'uploading' && (
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    )}
+                    {file.status === 'done' && (
+                      <span className="text-green-500 text-sm font-medium">✓</span>
+                    )}
+                    {file.status === 'error' && (
+                      <span className="text-destructive text-sm font-medium">Ошибка</span>
+                    )}
+                  </div>
+                  {file.status === 'pending' && (
+                    <button
+                      onClick={() => removeUploadingFile(file.id)}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-background/80 hover:bg-background"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-
-            <Button type="submit" disabled={createMutation.isPending || !name || !imageUrl}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              <Plus className="h-4 w-4 mr-2" />
-              Добавить шаблон
-            </Button>
-          </form>
+          )}
         </CardContent>
       </Card>
 
@@ -187,28 +258,28 @@ export default function AdminCardTemplates() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates?.map((template) => (
-            <Card key={template.id} className="overflow-hidden">
-              <div className="aspect-video bg-muted">
+            <Card key={template.id} className="overflow-hidden group">
+              <div className="aspect-video bg-muted relative">
                 <img
                   src={template.image_url}
                   alt={template.name}
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-background/0 group-hover:bg-background/60 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm("Удалить шаблон?")) {
+                        deleteMutation.mutate(template.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Удалить
+                  </Button>
+                </div>
               </div>
-              <CardContent className="p-4 flex items-center justify-between">
-                <h3 className="font-medium truncate">{template.name}</h3>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    if (confirm("Удалить шаблон?")) {
-                      deleteMutation.mutate(template.id);
-                    }
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </CardContent>
             </Card>
           ))}
         </div>
