@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useFormFieldSettings } from '@/hooks/useFormFieldSettings';
 import { GlassCard } from '@/components/mini-app/GlassCard';
 import { ProgressCard } from '@/components/mini-app/ProgressCard';
 import { FormInput } from '@/components/mini-app/FormInput';
@@ -99,6 +100,7 @@ export default function PartnerForm() {
   const { t } = useLanguage();
   const { user, hapticFeedback } = useTelegram();
   const navigate = useNavigate();
+  const { getLabel, isRequired, isVisible } = useFormFieldSettings('partner');
   
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
@@ -314,33 +316,60 @@ export default function PartnerForm() {
     const newErrors: Record<string, string> = {};
     
     if (step === 1) {
-      // Фото опционально
+      // Photo validation based on settings
+      if (isRequired('photo') && !formData.photo_url) {
+        newErrors.photo = 'Загрузите фото';
+      }
+      if (isRequired('logo') && !formData.logo_url) {
+        newErrors.logo = 'Загрузите логотип';
+      }
     }
 
     if (step === 2) {
-      if (!formData.name.trim()) newErrors.name = t('required');
-      if (!formData.birthDate) {
-        newErrors.birthDate = 'Укажите дату рождения';
-      } else {
-        const birthDate = new Date(formData.birthDate);
-        const today = new Date();
-        const age = today.getFullYear() - birthDate.getFullYear();
-        if (age < 16 || age > 100) {
-          newErrors.birthDate = 'Возраст должен быть от 16 до 100 лет';
+      if (isRequired('name', true) && !formData.name.trim()) newErrors.name = t('required');
+      if (isVisible('birthDate', true)) {
+        if (isRequired('birthDate', true) && !formData.birthDate) {
+          newErrors.birthDate = 'Укажите дату рождения';
+        } else if (formData.birthDate) {
+          const birthDate = new Date(formData.birthDate);
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear();
+          if (age < 16 || age > 100) {
+            newErrors.birthDate = 'Возраст должен быть от 16 до 100 лет';
+          }
         }
       }
-      if (formData.professions.length === 0) newErrors.profession = 'Выберите профессию';
-      
+      if (isRequired('profession', true) && formData.professions.length === 0) {
+        newErrors.profession = 'Выберите профессию';
+      }
+    }
+
+    if (step === 3) {
+      if (isRequired('agency_name') && !formData.agency_name.trim()) {
+        newErrors.agency_name = 'Введите название агентства';
+      }
+      if (isRequired('agency_description') && !formData.agency_description.trim()) {
+        newErrors.agency_description = 'Введите описание агентства';
+      }
+      if (isRequired('self_description') && !formData.self_description.trim()) {
+        newErrors.self_description = 'Введите описание о себе';
+      }
     }
 
     if (step === 4) {
-      if (formData.phone && !isValidPhone(formData.phone)) {
+      if (isRequired('phone') && !formData.phone) {
+        newErrors.phone = 'Введите номер телефона';
+      } else if (formData.phone && !isValidPhone(formData.phone)) {
         newErrors.phone = 'Неверный формат телефона';
       }
-      if (formData.tg_channel && !isValidTelegram(formData.tg_channel)) {
+      if (isRequired('tg_channel') && !formData.tg_channel) {
+        newErrors.tg_channel = 'Введите Telegram канал';
+      } else if (formData.tg_channel && !isValidTelegram(formData.tg_channel)) {
         newErrors.tg_channel = 'Введите @username или ссылку t.me/...';
       }
-      if (formData.website && !isValidUrl(formData.website)) {
+      if (isRequired('website') && !formData.website) {
+        newErrors.website = 'Введите адрес сайта';
+      } else if (formData.website && !isValidUrl(formData.website)) {
         newErrors.website = 'Неверный формат URL';
       }
     }
@@ -361,12 +390,16 @@ export default function PartnerForm() {
     }
 
     if (step === 6) {
-      // Валидация города - должен быть подтверждён через геокодер
-      if (formData.city && !cityVerified) {
+      // City validation
+      if (isRequired('city', true) && !formData.city) {
+        newErrors.city = 'Выберите город';
+      } else if (formData.city && !cityVerified) {
         newErrors.city = 'Выберите город из списка предложений';
       }
-      // Валидация адреса офиса - минимальная длина если указан
-      if (formData.office_address && formData.office_address.trim().length < 10) {
+      // Office address validation
+      if (isRequired('office_address') && !formData.office_address) {
+        newErrors.office_address = 'Введите адрес офиса';
+      } else if (formData.office_address && formData.office_address.trim().length < 10) {
         newErrors.office_address = 'Укажите более подробный адрес';
       }
     }
@@ -505,67 +538,77 @@ export default function PartnerForm() {
             delay={0}
           >
             <div className="flex flex-col sm:flex-row gap-8 justify-center items-center py-6">
-              <motion.div 
-                className="flex flex-col items-center gap-3"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <div className="relative">
-                  <PhotoUpload
-                    value={formData.photo_url || undefined}
-                    onChange={(url) => updateField('photo_url', url || '')}
-                    icon={User}
-                    hideLabel
-                    className="w-28 h-28"
-                  />
-                  {formData.photo_url && (
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success flex items-center justify-center"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </motion.div>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-foreground">Ваше фото</span>
-                <span className="text-xs text-muted-foreground">Будет на карточке</span>
-              </motion.div>
+              {isVisible('photo', true) && (
+                <motion.div 
+                  className="flex flex-col items-center gap-3"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="relative">
+                    <PhotoUpload
+                      value={formData.photo_url || undefined}
+                      onChange={(url) => updateField('photo_url', url || '')}
+                      icon={User}
+                      hideLabel
+                      className="w-28 h-28"
+                    />
+                    {formData.photo_url && (
+                      <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success flex items-center justify-center"
+                      >
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </motion.div>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{getLabel('photo', 'Ваше фото')}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {isRequired('photo') ? 'Обязательно' : 'Будет на карточке'}
+                  </span>
+                </motion.div>
+              )}
 
-              <div className="hidden sm:block w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent" />
+              {isVisible('photo', true) && isVisible('logo', true) && (
+                <div className="hidden sm:block w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent" />
+              )}
 
-              <motion.div 
-                className="flex flex-col items-center gap-3"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <div className="relative">
-                  <PhotoUpload
-                    value={formData.logo_url || undefined}
-                    onChange={(url) => updateField('logo_url', url || '')}
-                    icon={Image}
-                    hideLabel
-                    className="w-28 h-28"
-                  />
-                  {formData.logo_url && (
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success flex items-center justify-center"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </motion.div>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-foreground">Логотип</span>
-                <span className="text-xs text-muted-foreground">Опционально</span>
-              </motion.div>
+              {isVisible('logo', true) && (
+                <motion.div 
+                  className="flex flex-col items-center gap-3"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <div className="relative">
+                    <PhotoUpload
+                      value={formData.logo_url || undefined}
+                      onChange={(url) => updateField('logo_url', url || '')}
+                      icon={Image}
+                      hideLabel
+                      className="w-28 h-28"
+                    />
+                    {formData.logo_url && (
+                      <motion.div 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-success flex items-center justify-center"
+                      >
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </motion.div>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{getLabel('logo', 'Логотип')}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {isRequired('logo') ? 'Обязательно' : 'Опционально'}
+                  </span>
+                </motion.div>
+              )}
             </div>
 
             <p className="text-center text-xs text-muted-foreground mt-4">
@@ -592,40 +635,46 @@ export default function PartnerForm() {
                     delay={0}
                   >
                     <div className="grid grid-cols-[1fr_140px] gap-4">
-                      <FormInput
-                        label={t('name')}
-                        required
-                        value={formData.name}
-                        onChange={e => updateField('name', e.target.value)}
-                        placeholder={t('enterName')}
-                        error={errors.name}
-                        success={formData.name.trim().length >= 2}
-                      />
-                      <DateInput
-                        label="Дата рождения"
-                        value={formData.birthDate}
-                        onChange={(val) => updateField('birthDate', val)}
-                        error={errors.birthDate}
-                        required
-                      />
+                      {isVisible('name', true) && (
+                        <FormInput
+                          label={getLabel('name', t('name'))}
+                          required={isRequired('name', true)}
+                          value={formData.name}
+                          onChange={e => updateField('name', e.target.value)}
+                          placeholder={t('enterName')}
+                          error={errors.name}
+                          success={formData.name.trim().length >= 2}
+                        />
+                      )}
+                      {isVisible('birthDate', true) && (
+                        <DateInput
+                          label={getLabel('birthDate', 'Дата рождения')}
+                          value={formData.birthDate}
+                          onChange={(val) => updateField('birthDate', val)}
+                          error={errors.birthDate}
+                          required={isRequired('birthDate', true)}
+                        />
+                      )}
                     </div>
                   </ProgressCard>
 
-                  <ProgressCard 
-                    key="block2"
-                    title="Род деятельности"
-                    filledCount={block2Filled}
-                    totalCount={1}
-                    delay={0.1}
-                  >
-                    <ProfessionSelect
-                      value={formData.professions}
-                      onChange={(value) => setFormData(prev => ({ ...prev, professions: value }))}
-                      error={errors.profession}
-                      required
-                      label="Профессия"
-                    />
-                  </ProgressCard>
+                  {isVisible('profession', true) && (
+                    <ProgressCard 
+                      key="block2"
+                      title="Род деятельности"
+                      filledCount={block2Filled}
+                      totalCount={1}
+                      delay={0.1}
+                    >
+                      <ProfessionSelect
+                        value={formData.professions}
+                        onChange={(value) => setFormData(prev => ({ ...prev, professions: value }))}
+                        error={errors.profession}
+                        required={isRequired('profession', true)}
+                        label={getLabel('profession', 'Профессия')}
+                      />
+                    </ProgressCard>
+                  )}
                 </>
               )}
             </AnimatePresence>
@@ -640,46 +689,60 @@ export default function PartnerForm() {
         
         return (
           <div className="space-y-4">
-            <ProgressCard 
-              title="Агентство"
-              filledCount={block1Filled}
-              totalCount={2}
-              delay={0}
-            >
-              <FormInput
-                label={t('agencyName')}
-                value={formData.agency_name}
-                onChange={e => updateField('agency_name', e.target.value)}
-                placeholder="Название вашего агентства"
-                success={formData.agency_name.trim().length >= 2}
-              />
-              <div className="mt-4">
-                <FormInput
-                  label={t('agencyDescription')}
-                  multiline
-                  value={formData.agency_description}
-                  onChange={e => updateField('agency_description', e.target.value)}
-                  placeholder="Чем занимается ваше агентство..."
-                  success={formData.agency_description.trim().length >= 10}
-                />
-              </div>
-            </ProgressCard>
+            {(isVisible('agency_name', true) || isVisible('agency_description', true)) && (
+              <ProgressCard 
+                title="Агентство"
+                filledCount={block1Filled}
+                totalCount={2}
+                delay={0}
+              >
+                {isVisible('agency_name', true) && (
+                  <FormInput
+                    label={getLabel('agency_name', t('agencyName'))}
+                    required={isRequired('agency_name')}
+                    value={formData.agency_name}
+                    onChange={e => updateField('agency_name', e.target.value)}
+                    placeholder="Название вашего агентства"
+                    error={errors.agency_name}
+                    success={formData.agency_name.trim().length >= 2}
+                  />
+                )}
+                {isVisible('agency_description', true) && (
+                  <div className="mt-4">
+                    <FormInput
+                      label={getLabel('agency_description', t('agencyDescription'))}
+                      required={isRequired('agency_description')}
+                      multiline
+                      value={formData.agency_description}
+                      onChange={e => updateField('agency_description', e.target.value)}
+                      placeholder="Чем занимается ваше агентство..."
+                      error={errors.agency_description}
+                      success={formData.agency_description.trim().length >= 10}
+                    />
+                  </div>
+                )}
+              </ProgressCard>
+            )}
 
-            <ProgressCard 
-              title="О себе"
-              filledCount={block2Filled}
-              totalCount={1}
-              delay={0.1}
-            >
-              <FormInput
-                label={t('selfDescription')}
-                multiline
-                value={formData.self_description}
-                onChange={e => updateField('self_description', e.target.value)}
-                placeholder="Расскажите о себе и своём опыте..."
-                success={formData.self_description.trim().length >= 10}
-              />
-            </ProgressCard>
+            {isVisible('self_description', true) && (
+              <ProgressCard 
+                title="О себе"
+                filledCount={block2Filled}
+                totalCount={1}
+                delay={0.1}
+              >
+                <FormInput
+                  label={getLabel('self_description', t('selfDescription'))}
+                  required={isRequired('self_description')}
+                  multiline
+                  value={formData.self_description}
+                  onChange={e => updateField('self_description', e.target.value)}
+                  placeholder="Расскажите о себе и своём опыте..."
+                  error={errors.self_description}
+                  success={formData.self_description.trim().length >= 10}
+                />
+              </ProgressCard>
+            )}
           </div>
         );
       }
@@ -691,66 +754,77 @@ export default function PartnerForm() {
         
         return (
           <div className="space-y-4">
-            <ProgressCard 
-              title="Связь"
-              filledCount={block1Filled}
-              totalCount={2}
-              delay={0}
-            >
-              <FormInput
-                label={t('phone')}
-                type="tel"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="+7 (___) ___-__-__"
-                hint="Номер форматируется автоматически"
-                error={errors.phone}
-                success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
-              />
-              <div className="mt-4 space-y-2">
-                <FormInput
-                  label={t('tgChannel')}
-                  value={formData.tg_channel}
-                  onChange={e => updateField('tg_channel', e.target.value)}
-                  placeholder="@username или https://t.me/..."
-                  hint={
-                    tgChecking 
-                      ? "Проверяем канал..." 
-                      : tgVerified && tgChannelInfo 
-                        ? `✓ ${tgChannelInfo.title} (${tgChannelInfo.type === 'channel' ? 'канал' : tgChannelInfo.type === 'supergroup' ? 'группа' : tgChannelInfo.type})`
-                        : tgVerified === false 
-                          ? "Канал не найден или недоступен" 
-                          : "Можно указать @username или полную ссылку"
-                  }
-                  error={errors.tg_channel}
-                  success={tgVerified === true}
-                />
-                {tgChecking && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>Проверяем существование канала...</span>
+            {(isVisible('phone', true) || isVisible('tg_channel', true)) && (
+              <ProgressCard 
+                title="Связь"
+                filledCount={block1Filled}
+                totalCount={2}
+                delay={0}
+              >
+                {isVisible('phone', true) && (
+                  <FormInput
+                    label={getLabel('phone', t('phone'))}
+                    required={isRequired('phone')}
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    placeholder="+7 (___) ___-__-__"
+                    hint="Номер форматируется автоматически"
+                    error={errors.phone}
+                    success={!!formData.phone && formData.phone.length === 18 && isValidPhone(formData.phone)}
+                  />
+                )}
+                {isVisible('tg_channel', true) && (
+                  <div className="mt-4 space-y-2">
+                    <FormInput
+                      label={getLabel('tg_channel', t('tgChannel'))}
+                      required={isRequired('tg_channel')}
+                      value={formData.tg_channel}
+                      onChange={e => updateField('tg_channel', e.target.value)}
+                      placeholder="@username или https://t.me/..."
+                      hint={
+                        tgChecking 
+                          ? "Проверяем канал..." 
+                          : tgVerified && tgChannelInfo 
+                            ? `✓ ${tgChannelInfo.title} (${tgChannelInfo.type === 'channel' ? 'канал' : tgChannelInfo.type === 'supergroup' ? 'группа' : tgChannelInfo.type})`
+                            : tgVerified === false 
+                              ? "Канал не найден или недоступен" 
+                              : "Можно указать @username или полную ссылку"
+                      }
+                      error={errors.tg_channel}
+                      success={tgVerified === true}
+                    />
+                    {tgChecking && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Проверяем существование канала...</span>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            </ProgressCard>
+              </ProgressCard>
+            )}
 
-            <ProgressCard 
-              title="Сайт"
-              filledCount={block2Filled}
-              totalCount={1}
-              delay={0.1}
-            >
-              <FormInput
-                label={t('website')}
-                type="url"
-                value={formData.website}
-                onChange={e => updateField('website', e.target.value)}
-                placeholder="https://example.com"
-                hint="Укажите полный адрес сайта с https://"
-                error={errors.website}
-                success={!!formData.website && isValidUrl(formData.website)}
-              />
-            </ProgressCard>
+            {isVisible('website', true) && (
+              <ProgressCard 
+                title="Сайт"
+                filledCount={block2Filled}
+                totalCount={1}
+                delay={0.1}
+              >
+                <FormInput
+                  label={getLabel('website', t('website'))}
+                  required={isRequired('website')}
+                  type="url"
+                  value={formData.website}
+                  onChange={e => updateField('website', e.target.value)}
+                  placeholder="https://example.com"
+                  hint="Укажите полный адрес сайта с https://"
+                  error={errors.website}
+                  success={!!formData.website && isValidUrl(formData.website)}
+                />
+              </ProgressCard>
+            )}
           </div>
         );
       }
@@ -769,24 +843,30 @@ export default function PartnerForm() {
               totalCount={2}
               delay={0}
             >
-              <FormInput
-                label="YouTube"
-                value={formData.youtube}
-                onChange={e => updateField('youtube', e.target.value)}
-                placeholder="https://youtube.com/@channel"
-                error={errors.youtube}
-                success={!!formData.youtube && isValidYoutube(formData.youtube)}
-              />
-              <div className="mt-4">
+              {isVisible('youtube', true) && (
                 <FormInput
-                  label="Rutube"
-                  value={formData.rutube}
-                  onChange={e => updateField('rutube', e.target.value)}
-                  placeholder="https://rutube.ru/channel/..."
-                  error={errors.rutube}
-                  success={!!formData.rutube && isValidRutube(formData.rutube)}
+                  label={getLabel('youtube', 'YouTube')}
+                  required={isRequired('youtube')}
+                  value={formData.youtube}
+                  onChange={e => updateField('youtube', e.target.value)}
+                  placeholder="https://youtube.com/@channel"
+                  error={errors.youtube}
+                  success={!!formData.youtube && isValidYoutube(formData.youtube)}
                 />
-              </div>
+              )}
+              {isVisible('rutube', true) && (
+                <div className="mt-4">
+                  <FormInput
+                    label={getLabel('rutube', 'Rutube')}
+                    required={isRequired('rutube')}
+                    value={formData.rutube}
+                    onChange={e => updateField('rutube', e.target.value)}
+                    placeholder="https://rutube.ru/channel/..."
+                    error={errors.rutube}
+                    success={!!formData.rutube && isValidRutube(formData.rutube)}
+                  />
+                </div>
+              )}
             </ProgressCard>
 
             <ProgressCard 
@@ -795,24 +875,30 @@ export default function PartnerForm() {
               totalCount={2}
               delay={0.1}
             >
-              <FormInput
-                label="Яндекс Дзен"
-                value={formData.dzen}
-                onChange={e => updateField('dzen', e.target.value)}
-                placeholder="https://dzen.ru/..."
-                error={errors.dzen}
-                success={!!formData.dzen && isValidDzen(formData.dzen)}
-              />
-              <div className="mt-4">
+              {isVisible('dzen', true) && (
                 <FormInput
-                  label="VK Видео"
-                  value={formData.vk_video}
-                  onChange={e => updateField('vk_video', e.target.value)}
-                  placeholder="https://vk.com/video..."
-                  error={errors.vk_video}
-                  success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
+                  label={getLabel('dzen', 'Яндекс Дзен')}
+                  required={isRequired('dzen')}
+                  value={formData.dzen}
+                  onChange={e => updateField('dzen', e.target.value)}
+                  placeholder="https://dzen.ru/..."
+                  error={errors.dzen}
+                  success={!!formData.dzen && isValidDzen(formData.dzen)}
                 />
-              </div>
+              )}
+              {isVisible('vk_video', true) && (
+                <div className="mt-4">
+                  <FormInput
+                    label={getLabel('vk_video', 'VK Видео')}
+                    required={isRequired('vk_video')}
+                    value={formData.vk_video}
+                    onChange={e => updateField('vk_video', e.target.value)}
+                    placeholder="https://vk.com/video..."
+                    error={errors.vk_video}
+                    success={!!formData.vk_video && isValidVkVideo(formData.vk_video)}
+                  />
+                </div>
+              )}
             </ProgressCard>
           </div>
         );
@@ -824,39 +910,45 @@ export default function PartnerForm() {
         
         return (
           <div className="space-y-4">
-            <ProgressCard 
-              title="Город"
-              filledCount={block1Filled}
-              totalCount={1}
-              delay={0}
-            >
-              <CityAutocomplete
-                label="Город проживания"
-                value={formData.city}
-                onChange={(value, verified) => {
-                  updateField('city', value);
-                  setCityVerified(verified || false);
-                }}
-                placeholder="Начните вводить название города"
-                error={errors.city}
-              />
-            </ProgressCard>
+            {isVisible('city', true) && (
+              <ProgressCard 
+                title="Город"
+                filledCount={block1Filled}
+                totalCount={1}
+                delay={0}
+              >
+                <CityAutocomplete
+                  label={getLabel('city', 'Город проживания')}
+                  value={formData.city}
+                  onChange={(value, verified) => {
+                    updateField('city', value);
+                    setCityVerified(verified || false);
+                  }}
+                  placeholder="Начните вводить название города"
+                  error={errors.city}
+                  required={isRequired('city', true)}
+                />
+              </ProgressCard>
+            )}
 
-            <ProgressCard 
-              title="Адрес офиса"
-              filledCount={block2Filled}
-              totalCount={1}
-              delay={0.1}
-            >
-              <AddressAutocomplete
-                label={t('officeAddress')}
-                value={formData.office_address}
-                onChange={(address) => updateField('office_address', address)}
-                placeholder="ул. Примерная, д. 1, офис 123"
-                hint="Адрес проверяется через Yandex Geocoder"
-                error={errors.office_address}
-              />
-            </ProgressCard>
+            {isVisible('office_address', true) && (
+              <ProgressCard 
+                title="Адрес офиса"
+                filledCount={block2Filled}
+                totalCount={1}
+                delay={0.1}
+              >
+                <AddressAutocomplete
+                  label={getLabel('office_address', t('officeAddress'))}
+                  value={formData.office_address}
+                  onChange={(address) => updateField('office_address', address)}
+                  placeholder="ул. Примерная, д. 1, офис 123"
+                  hint="Адрес проверяется через Yandex Geocoder"
+                  error={errors.office_address}
+                  required={isRequired('office_address')}
+                />
+              </ProgressCard>
+            )}
           </div>
         );
       }

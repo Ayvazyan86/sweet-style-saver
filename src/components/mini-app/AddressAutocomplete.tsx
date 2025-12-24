@@ -11,6 +11,7 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   hint?: string;
   error?: string;
+  required?: boolean;
 }
 
 interface AddressSuggestion {
@@ -25,7 +26,8 @@ export const AddressAutocomplete = ({
   label,
   placeholder = 'ул. Примерная, д. 1',
   hint,
-  error
+  error,
+  required = false
 }: AddressAutocompleteProps) => {
   const [inputValue, setInputValue] = useState(value);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -221,7 +223,7 @@ export const AddressAutocomplete = ({
     <div className="space-y-2" ref={containerRef}>
       {label && (
         <label className="text-sm font-medium text-foreground block">
-          {label}
+          {label} {required && <span className="text-destructive">*</span>}
         </label>
       )}
 
