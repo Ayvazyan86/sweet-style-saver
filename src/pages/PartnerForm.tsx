@@ -42,8 +42,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, ArrowRight, User, Briefcase, Phone, 
   Loader2, Eye, LayoutTemplate, ZoomIn, Image, Camera, 
-  Share2, Building2, Video, MapPin
+  Share2, Building2, Video, MapPin, Check
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -112,6 +113,7 @@ export default function PartnerForm() {
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<CardTemplate | null>(null);
+  const [cardDisplayFields, setCardDisplayFields] = useState<string[]>(['name', 'profession', 'city', 'phone']);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -496,6 +498,7 @@ export default function PartnerForm() {
           office_address: formData.office_address || null,
           photo_url: formData.photo_url || null,
           card_template_id: selectedTemplateId || null,
+          card_display_fields: cardDisplayFields,
         })
         .select('id')
         .single();
@@ -953,7 +956,31 @@ export default function PartnerForm() {
         );
       }
 
-      case 7:
+      case 7: {
+        // Define available fields for card display
+        const cardFieldOptions = [
+          { key: 'name', label: 'Имя', disabled: true }, // Always required
+          { key: 'profession', label: 'Профессия' },
+          { key: 'city', label: 'Город' },
+          { key: 'phone', label: 'Телефон' },
+          { key: 'tg_channel', label: 'Telegram канал' },
+          { key: 'website', label: 'Сайт' },
+          { key: 'agency_name', label: 'Агентство' },
+          { key: 'youtube', label: 'YouTube' },
+          { key: 'dzen', label: 'Яндекс Дзен' },
+          { key: 'rutube', label: 'RuTube' },
+          { key: 'vk_video', label: 'VK Видео' },
+        ];
+
+        const toggleCardField = (fieldKey: string) => {
+          if (fieldKey === 'name') return; // Can't toggle name
+          setCardDisplayFields(prev => 
+            prev.includes(fieldKey) 
+              ? prev.filter(f => f !== fieldKey)
+              : [...prev, fieldKey]
+          );
+        };
+
         return (
           <div className="space-y-6">
             <GlassCard>
@@ -974,6 +1001,64 @@ export default function PartnerForm() {
                   setSelectedTemplate(template);
                 }}
               />
+            </GlassCard>
+
+            {/* Data Selection for Card */}
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Данные на карточке</h3>
+                  <p className="text-xs text-muted-foreground">Выберите, что отображать</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {cardFieldOptions.map(({ key, label, disabled }) => {
+                  const isSelected = cardDisplayFields.includes(key);
+                  const hasValue = key === 'name' 
+                    ? formData.name.trim().length > 0
+                    : key === 'profession'
+                      ? formData.professions.length > 0
+                      : !!(formData as any)[key];
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => !disabled && toggleCardField(key)}
+                      disabled={disabled || !hasValue}
+                      className={cn(
+                        "flex items-center gap-2 p-3 rounded-xl border transition-all duration-200 text-left",
+                        isSelected 
+                          ? "border-primary/50 bg-primary/10" 
+                          : "border-border/50 bg-card/30",
+                        disabled && "opacity-60 cursor-not-allowed",
+                        !hasValue && !disabled && "opacity-40 cursor-not-allowed"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0",
+                        isSelected ? "bg-primary border-primary" : "border-border/50"
+                      )}>
+                        {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                      </div>
+                      <span className={cn(
+                        "text-sm",
+                        isSelected ? "text-foreground font-medium" : "text-muted-foreground"
+                      )}>
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <p className="text-xs text-muted-foreground mt-4">
+                Выбранные данные будут размещены на вашей карточке партнёра
+              </p>
             </GlassCard>
 
             {/* Banner Preview */}
@@ -1014,6 +1099,7 @@ export default function PartnerForm() {
             )}
           </div>
         );
+      }
 
       case 8:
         return (

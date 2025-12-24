@@ -522,6 +522,7 @@ export type Database = {
           age: number | null
           agency_description: string | null
           agency_name: string | null
+          card_display_fields: string[] | null
           card_template_id: string | null
           city: string | null
           created_at: string | null
@@ -550,6 +551,7 @@ export type Database = {
           age?: number | null
           agency_description?: string | null
           agency_name?: string | null
+          card_display_fields?: string[] | null
           card_template_id?: string | null
           city?: string | null
           created_at?: string | null
@@ -578,6 +580,7 @@ export type Database = {
           age?: number | null
           agency_description?: string | null
           agency_name?: string | null
+          card_display_fields?: string[] | null
           card_template_id?: string | null
           city?: string | null
           created_at?: string | null
@@ -863,7 +866,7 @@ export type Database = {
           },
         ]
       }
-      professions: {
+      profession_categories: {
         Row: {
           created_at: string | null
           id: string
@@ -895,6 +898,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      professions: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_en: string | null
+          slug: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_en?: string | null
+          slug: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_en?: string | null
+          slug?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "profession_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

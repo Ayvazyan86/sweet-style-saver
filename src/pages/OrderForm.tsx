@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useFormFieldSettings } from '@/hooks/useFormFieldSettings';
 import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
@@ -13,6 +14,7 @@ export default function OrderForm() {
   const { t } = useLanguage();
   const { hapticFeedback } = useTelegram();
   const navigate = useNavigate();
+  const { getLabel, isRequired, isVisible } = useFormFieldSettings('order');
   
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
@@ -47,9 +49,24 @@ export default function OrderForm() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     
-    if (selectedCategory.length === 0) newErrors.category = t('selectCategories');
-    if (!formData.title.trim()) newErrors.title = t('required');
-    if (!formData.text.trim()) newErrors.text = t('required');
+    if (isRequired('category', true) && selectedCategory.length === 0) {
+      newErrors.category = t('selectCategories');
+    }
+    if (isRequired('title', true) && !formData.title.trim()) {
+      newErrors.title = t('required');
+    }
+    if (isRequired('text', true) && !formData.text.trim()) {
+      newErrors.text = t('required');
+    }
+    if (isRequired('city') && !formData.city.trim()) {
+      newErrors.city = t('required');
+    }
+    if (isRequired('budget') && !formData.budget.trim()) {
+      newErrors.budget = t('required');
+    }
+    if (isRequired('contact') && !formData.contact.trim()) {
+      newErrors.contact = t('required');
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -102,53 +119,71 @@ export default function OrderForm() {
           </div>
 
           <div className="space-y-4">
-            <CategorySelect
-              selectedIds={selectedCategory}
-              onChange={setSelectedCategory}
-              multiple={true}
-              error={errors.category}
-            />
+            {isVisible('category', true) && (
+              <CategorySelect
+                selectedIds={selectedCategory}
+                onChange={setSelectedCategory}
+                multiple={true}
+                error={errors.category}
+              />
+            )}
 
-            <FormInput
-              label="Заголовок заказа"
-              required
-              value={formData.title}
-              onChange={e => updateField('title', e.target.value)}
-              placeholder="Кратко опишите задачу"
-              error={errors.title}
-            />
+            {isVisible('title', true) && (
+              <FormInput
+                label={getLabel('title', 'Заголовок заказа')}
+                required={isRequired('title', true)}
+                value={formData.title}
+                onChange={e => updateField('title', e.target.value)}
+                placeholder="Кратко опишите задачу"
+                error={errors.title}
+              />
+            )}
 
-            <FormInput
-              label="Описание заказа"
-              required
-              multiline
-              value={formData.text}
-              onChange={e => updateField('text', e.target.value)}
-              placeholder="Подробно опишите, что вам нужно..."
-              error={errors.text}
-            />
+            {isVisible('text', true) && (
+              <FormInput
+                label={getLabel('text', 'Описание заказа')}
+                required={isRequired('text', true)}
+                multiline
+                value={formData.text}
+                onChange={e => updateField('text', e.target.value)}
+                placeholder="Подробно опишите, что вам нужно..."
+                error={errors.text}
+              />
+            )}
 
             <div className="grid grid-cols-2 gap-4">
-              <FormInput
-                label={t('city')}
-                value={formData.city}
-                onChange={e => updateField('city', e.target.value)}
-                placeholder={t('enterCity')}
-              />
-              <FormInput
-                label={t('budget')}
-                value={formData.budget}
-                onChange={handleBudgetChange}
-                placeholder="10 000 ₽"
-              />
+              {isVisible('city', true) && (
+                <FormInput
+                  label={getLabel('city', t('city'))}
+                  required={isRequired('city')}
+                  value={formData.city}
+                  onChange={e => updateField('city', e.target.value)}
+                  placeholder={t('enterCity')}
+                  error={errors.city}
+                />
+              )}
+              {isVisible('budget', true) && (
+                <FormInput
+                  label={getLabel('budget', t('budget'))}
+                  required={isRequired('budget')}
+                  value={formData.budget}
+                  onChange={handleBudgetChange}
+                  placeholder="10 000 ₽"
+                  error={errors.budget}
+                />
+              )}
             </div>
 
-            <FormInput
-              label={t('contact')}
-              value={formData.contact}
-              onChange={e => updateField('contact', e.target.value)}
-              placeholder="@username или телефон"
-            />
+            {isVisible('contact', true) && (
+              <FormInput
+                label={getLabel('contact', t('contact'))}
+                required={isRequired('contact')}
+                value={formData.contact}
+                onChange={e => updateField('contact', e.target.value)}
+                placeholder="@username или телефон"
+                error={errors.contact}
+              />
+            )}
           </div>
         </GlassCard>
 
