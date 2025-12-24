@@ -13,16 +13,25 @@ import {
   Settings, 
   Pencil, 
   Loader2,
-  GripVertical,
   Users,
   ShoppingCart,
   HelpCircle,
   Send,
-  Save
+  Save,
+  X,
+  Check
 } from 'lucide-react';
-import type { Tables } from '@/integrations/supabase/types';
 
-type CustomFieldDefinition = Tables<'custom_field_definitions'>;
+interface FormFieldSetting {
+  id: string;
+  form_type: string;
+  field_key: string;
+  label: string;
+  label_en: string | null;
+  is_visible: boolean;
+  is_required: boolean;
+  sort_order: number;
+}
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('telegram');
@@ -62,247 +71,164 @@ export default function AdminSettings() {
         </TabsContent>
 
         <TabsContent value="partner-form">
-          <PartnerFormSettings />
+          <FormFieldSettings formType="partner" title="Стать партнёром" icon={<Users className="h-5 w-5" />} />
         </TabsContent>
 
         <TabsContent value="order-form">
-          <OrderFormSettings />
+          <FormFieldSettings formType="order" title="Хочу заказать" icon={<ShoppingCart className="h-5 w-5" />} />
         </TabsContent>
 
         <TabsContent value="question-form">
-          <QuestionFormSettings />
+          <FormFieldSettings formType="question" title="Задать вопрос" icon={<HelpCircle className="h-5 w-5" />} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-// ========== Partner Form Settings ==========
-function PartnerFormSettings() {
+// ========== Form Field Settings (Universal for all forms) ==========
+function FormFieldSettings({ formType, title, icon }: { formType: string; title: string; icon: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
 
-  const { data: fields } = useQuery({
-    queryKey: ['admin-custom-fields'],
+  const { data: fields, isLoading } = useQuery({
+    queryKey: ['form-field-settings', formType],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('custom_field_definitions')
+        .from('form_field_settings')
         .select('*')
+        .eq('form_type', formType)
         .order('sort_order', { ascending: true });
       
       if (error) throw error;
-      return data as CustomFieldDefinition[];
+      return data as FormFieldSetting[];
     },
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<FormFieldSetting> }) => {
       const { error } = await supabase
-        .from('custom_field_definitions')
-        .update({ is_active })
+        .from('form_field_settings')
+        .update(updates)
         .eq('id', id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-custom-fields'] });
+      queryClient.invalidateQueries({ queryKey: ['form-field-settings', formType] });
+      toast.success('Настройки сохранены');
     },
     onError: (error) => {
       toast.error('Ошибка: ' + error.message);
     },
   });
 
-  const toggleRequiredMutation = useMutation({
-    mutationFn: async ({ id, is_required }: { id: string; is_required: boolean }) => {
-      const { error } = await supabase
-        .from('custom_field_definitions')
-        .update({ is_required })
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-custom-fields'] });
-    },
-    onError: (error) => {
-      toast.error('Ошибка: ' + error.message);
-    },
-  });
+  const startEdit = (field: FormFieldSetting) => {
+    setEditingId(field.id);
+    setEditLabel(field.label);
+  };
 
-  const standardFields = [
-    { key: 'name', label: 'ФИО', required: true },
-    { key: 'age', label: 'Возраст', required: false },
-    { key: 'city', label: 'Город', required: false },
-    { key: 'phone', label: 'Телефон', required: true },
-    { key: 'profession', label: 'Профессия', required: false },
-    { key: 'categories', label: 'Категории', required: true },
-    { key: 'self_description', label: 'О себе', required: false },
-    { key: 'agency_name', label: 'Название агентства', required: false },
-    { key: 'agency_description', label: 'Описание агентства', required: false },
-    { key: 'tg_channel', label: 'Telegram канал', required: false },
-    { key: 'website', label: 'Сайт', required: false },
-    { key: 'youtube', label: 'YouTube', required: false },
-    { key: 'office_address', label: 'Адрес офиса', required: false },
-    { key: 'photo', label: 'Фото', required: false },
-  ];
+  const saveEdit = (id: string) => {
+    if (editLabel.trim()) {
+      updateMutation.mutate({ id, updates: { label: editLabel.trim() } });
+    }
+    setEditingId(null);
+  };
 
-  return (
-    <Card className="bg-card border-border">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Форма "Стать партнёром"
-        </CardTitle>
-        <CardDescription>
-          Настройка полей формы регистрации партнёров
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h3 className="font-medium mb-4 text-foreground">Стандартные поля</h3>
-          <div className="space-y-2">
-            {standardFields.map((field) => (
-              <div 
-                key={field.key}
-                className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30"
-              >
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="font-medium text-foreground">{field.label}</p>
-                    <p className="text-sm text-muted-foreground">Поле: {field.key}</p>
-                  </div>
-                  {field.required && <Badge>Обязательное</Badge>}
-                </div>
-                <Badge variant="outline">Системное</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditLabel('');
+  };
 
-        {fields && fields.length > 0 && (
-          <div>
-            <h3 className="font-medium mb-4 text-foreground">Дополнительные поля</h3>
-            <div className="space-y-2">
-              {fields.map((field) => (
-                <div 
-                  key={field.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30"
-                >
-                  <div className="flex items-center gap-4">
-                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                    <div>
-                      <p className="font-medium text-foreground">{field.label}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Тип: {field.field_type} | Ключ: {field.key}
-                      </p>
-                    </div>
-                    {field.is_required && <Badge>Обязательное</Badge>}
-                    {!field.is_active && <Badge variant="secondary">Скрыто</Badge>}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm text-muted-foreground">Обязательное</Label>
-                      <Switch
-                        checked={field.is_required ?? false}
-                        onCheckedChange={(checked) => toggleRequiredMutation.mutate({ id: field.id, is_required: checked })}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm text-muted-foreground">Активно</Label>
-                      <Switch
-                        checked={field.is_active ?? true}
-                        onCheckedChange={(checked) => toggleMutation.mutate({ id: field.id, is_active: checked })}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+  const toggleVisibility = (id: string, is_visible: boolean) => {
+    updateMutation.mutate({ id, updates: { is_visible } });
+  };
 
-// ========== Order Form Settings ==========
-function OrderFormSettings() {
-  const orderFields = [
-    { key: 'categories', label: 'Категории', required: true },
-    { key: 'title', label: 'Заголовок', required: false },
-    { key: 'text', label: 'Описание заказа', required: true },
-    { key: 'city', label: 'Город', required: false },
-    { key: 'budget', label: 'Бюджет', required: false },
-    { key: 'contact', label: 'Контакт', required: false },
-  ];
+  const toggleRequired = (id: string, is_required: boolean) => {
+    updateMutation.mutate({ id, updates: { is_required } });
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-card border-border">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5" />
-          Форма "Хочу заказать"
+          {icon}
+          Форма "{title}"
         </CardTitle>
         <CardDescription>
-          Настройка полей формы создания заказа
+          Настройка полей формы: названия, видимость, обязательность
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {orderFields.map((field) => (
+          {fields?.map((field) => (
             <div 
-              key={field.key}
+              key={field.id}
               className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30"
             >
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="font-medium text-foreground">{field.label}</p>
-                  <p className="text-sm text-muted-foreground">Поле: {field.key}</p>
-                </div>
-                {field.required && <Badge>Обязательное</Badge>}
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                {editingId === field.id ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      value={editLabel}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                      className="bg-input border-border max-w-xs"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit(field.id);
+                        if (e.key === 'Escape') cancelEdit();
+                      }}
+                    />
+                    <Button size="sm" variant="ghost" onClick={() => saveEdit(field.id)}>
+                      <Check className="h-4 w-4 text-green-500" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                      <X className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{field.label}</p>
+                      <p className="text-sm text-muted-foreground">Поле: {field.field_key}</p>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => startEdit(field)}>
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                )}
+                
+                {field.is_required && <Badge>Обязательное</Badge>}
+                {!field.is_visible && <Badge variant="secondary">Скрыто</Badge>}
               </div>
-              <Badge variant="outline">Системное</Badge>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ========== Question Form Settings ==========
-function QuestionFormSettings() {
-  const questionFields = [
-    { key: 'categories', label: 'Категории', required: true },
-    { key: 'text', label: 'Вопрос', required: true },
-    { key: 'details', label: 'Детали', required: false },
-  ];
-
-  return (
-    <Card className="bg-card border-border">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <HelpCircle className="h-5 w-5" />
-          Форма "Задать вопрос"
-        </CardTitle>
-        <CardDescription>
-          Настройка полей формы вопросов
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {questionFields.map((field) => (
-            <div 
-              key={field.key}
-              className="flex items-center justify-between p-4 rounded-lg border border-border bg-secondary/30"
-            >
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="font-medium text-foreground">{field.label}</p>
-                  <p className="text-sm text-muted-foreground">Поле: {field.key}</p>
+              
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Обязательное</Label>
+                  <Switch
+                    checked={field.is_required}
+                    onCheckedChange={(checked) => toggleRequired(field.id, checked)}
+                  />
                 </div>
-                {field.required && <Badge>Обязательное</Badge>}
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Видимо</Label>
+                  <Switch
+                    checked={field.is_visible}
+                    onCheckedChange={(checked) => toggleVisibility(field.id, checked)}
+                  />
+                </div>
               </div>
-              <Badge variant="outline">Системное</Badge>
             </div>
           ))}
         </div>

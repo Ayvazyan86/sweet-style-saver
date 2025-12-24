@@ -188,6 +188,45 @@ export type Database = {
           },
         ]
       }
+      form_field_settings: {
+        Row: {
+          created_at: string
+          field_key: string
+          form_type: string
+          id: string
+          is_required: boolean
+          is_visible: boolean
+          label: string
+          label_en: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          form_type: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          label: string
+          label_en?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          form_type?: string
+          id?: string
+          is_required?: boolean
+          is_visible?: boolean
+          label?: string
+          label_en?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       moderation_logs: {
         Row: {
           action: string
