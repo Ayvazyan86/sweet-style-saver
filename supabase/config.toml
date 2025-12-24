@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.publish-partner-to-channel]
 verify_jwt = false
+
+[functions.delete-channel-post]
+verify_jwt = false
