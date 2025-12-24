@@ -18,6 +18,8 @@ interface ApplicationPayload {
     phone?: string
     city?: string
     profession?: string
+    photo_url?: string
+    card_template_id?: string
     created_at: string
   }
 }
@@ -78,6 +80,60 @@ async function sendTelegramMessage(chatId: string, text: string, replyMarkup?: I
   return response.json()
 }
 
+async function sendTelegramPhoto(chatId: string, photoUrl: string, caption?: string) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`
+  
+  const body: Record<string, unknown> = {
+    chat_id: chatId,
+    photo: photoUrl,
+    parse_mode: 'HTML',
+  }
+  
+  if (caption) {
+    body.caption = caption
+  }
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('Telegram API error sending photo:', error)
+    // Don't throw - photo sending is optional
+    return null
+  }
+
+  return response.json()
+}
+
+async function sendTelegramMediaGroup(chatId: string, media: { type: string, media: string, caption?: string, parse_mode?: string }[]) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      media: media,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    console.error('Telegram API error sending media group:', error)
+    return null
+  }
+
+  return response.json()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -104,6 +160,15 @@ Deno.serve(async (req) => {
 
     const { record } = payload
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+    // Get full application data with photo and template
+    const { data: fullApplication } = await supabase
+      .from('partner_applications')
+      .select('*, card_templates:card_template_id(id, name, image_url)')
+      .eq('id', record.id)
+      .single()
+
+    console.log('Full application data:', JSON.stringify(fullApplication))
 
     // Get admin chat ID from settings
     const { data: adminChatSetting } = await supabase
@@ -149,13 +214,62 @@ ${record.phone ? `📞 <b>Телефон:</b> ${record.phone}` : ''}
       inline_keyboard: [
         [
           {
-            text: '📋 Перейти в админку',
-            url: 'https://style-keeper-hub.lovable.app/admin/applications'
+            text: '📋 Перейти к модерации',
+            url: `https://style-keeper-hub.lovable.app/admin/applications`
           }
         ]
       ]
     }
 
+    // Collect images to send
+    const photoUrl = fullApplication?.photo_url
+    const templateImageUrl = fullApplication?.card_templates?.image_url
+
+    console.log('Photo URL:', photoUrl)
+    console.log('Template image URL:', templateImageUrl)
+
+    // If we have images, send them as a media group
+    if (photoUrl || templateImageUrl) {
+      const media: { type: string, media: string, caption?: string, parse_mode?: string }[] = []
+
+      // Add partner photo
+      if (photoUrl) {
+        media.push({
+          type: 'photo',
+          media: photoUrl,
+          caption: media.length === 0 ? `📸 <b>Фото партнёра</b>` : undefined,
+          parse_mode: 'HTML'
+        })
+      }
+
+      // Add template image
+      if (templateImageUrl) {
+        media.push({
+          type: 'photo',
+          media: templateImageUrl,
+          caption: media.length === 0 ? `🎨 <b>Выбранный шаблон:</b> ${fullApplication?.card_templates?.name || 'Шаблон'}` : undefined,
+          parse_mode: 'HTML'
+        })
+      }
+
+      // Send media group if we have images
+      if (media.length > 0) {
+        // Add caption to the first image with template info
+        if (media.length > 1) {
+          media[0].caption = `📸 <b>Фото партнёра</b>`
+          media[1].caption = `🎨 <b>Шаблон:</b> ${fullApplication?.card_templates?.name || 'Выбранный шаблон'}`
+        } else if (media.length === 1 && photoUrl) {
+          media[0].caption = `📸 <b>Фото партнёра</b>`
+        } else if (media.length === 1 && templateImageUrl) {
+          media[0].caption = `🎨 <b>Шаблон:</b> ${fullApplication?.card_templates?.name || 'Выбранный шаблон'}`
+        }
+
+        const mediaResult = await sendTelegramMediaGroup(adminChatId, media)
+        console.log('Media group sent:', mediaResult ? 'success' : 'failed')
+      }
+    }
+
+    // Always send the main text message with inline keyboard
     await sendTelegramMessage(adminChatId, message, inlineKeyboard)
     console.log('Notification sent successfully to admin via bot')
 
