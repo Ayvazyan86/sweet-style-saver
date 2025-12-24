@@ -92,6 +92,7 @@ export default function AdminApplications() {
           name: application.name,
           age: application.age,
           profession: application.profession,
+          profession_descriptions: application.profession_descriptions,
           city: application.city,
           agency_name: application.agency_name,
           agency_description: application.agency_description,
@@ -100,7 +101,12 @@ export default function AdminApplications() {
           tg_channel: application.tg_channel,
           website: application.website,
           youtube: application.youtube,
+          rutube: application.rutube,
+          dzen: application.dzen,
+          vk_video: application.vk_video,
+          tg_video: application.tg_video,
           office_address: application.office_address,
+          card_template_id: application.card_template_id,
           status: 'active',
           partner_type: 'free'
         })
