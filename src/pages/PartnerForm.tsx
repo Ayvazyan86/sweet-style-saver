@@ -34,6 +34,7 @@ import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { PartnerPreviewCard } from '@/components/mini-app/PartnerPreviewCard';
+import { TelegramPostPreview } from '@/components/mini-app/TelegramPostPreview';
 import { TemplateSelect, CardTemplate } from '@/components/mini-app/TemplateSelect';
 import { FormStepTabs, FormStep } from '@/components/mini-app/FormStepTabs';
 import { SuccessAnimation } from '@/components/mini-app/SuccessAnimation';
@@ -1144,13 +1145,14 @@ export default function PartnerForm() {
       case 8:
         return (
           <div className="space-y-6">
+            {/* Partner Card Preview */}
             <GlassCard>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
                   <Eye className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">Предпросмотр</h2>
+                  <h2 className="text-xl font-bold text-foreground">Карточка партнёра</h2>
                   <p className="text-sm text-muted-foreground">Проверьте данные перед отправкой</p>
                 </div>
               </div>
@@ -1158,6 +1160,40 @@ export default function PartnerForm() {
               <PartnerPreviewCard 
                 data={{...formData, tg_video: ''}}
                 categories={[]}
+              />
+            </GlassCard>
+
+            {/* Telegram Post Preview */}
+            <GlassCard>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <Share2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Пост в Telegram</h2>
+                  <p className="text-sm text-muted-foreground">Так будет выглядеть ваш пост в канале</p>
+                </div>
+              </div>
+              
+              <TelegramPostPreview 
+                data={{
+                  name: formData.name,
+                  professions: formData.professions,
+                  professionDescriptions: formData.professionDescriptions,
+                  city: formData.city,
+                  agency_name: formData.agency_name,
+                  agency_description: formData.agency_description,
+                  self_description: formData.self_description,
+                  phone: formData.phone,
+                  tg_channel: formData.tg_channel,
+                  website: formData.website,
+                  youtube: formData.youtube,
+                  rutube: formData.rutube,
+                  dzen: formData.dzen,
+                  vk_video: formData.vk_video,
+                  office_address: formData.office_address,
+                  photo_url: formData.photo_url,
+                }}
               />
             </GlassCard>
           </div>
