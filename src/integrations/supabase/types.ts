@@ -535,6 +535,7 @@ export type Database = {
           phone: string | null
           photo_url: string | null
           profession: string | null
+          profession_descriptions: Json | null
           rejection_reason: string | null
           rutube: string | null
           self_description: string | null
@@ -564,6 +565,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           profession?: string | null
+          profession_descriptions?: Json | null
           rejection_reason?: string | null
           rutube?: string | null
           self_description?: string | null
@@ -593,6 +595,7 @@ export type Database = {
           phone?: string | null
           photo_url?: string | null
           profession?: string | null
+          profession_descriptions?: Json | null
           rejection_reason?: string | null
           rutube?: string | null
           self_description?: string | null
@@ -730,6 +733,7 @@ export type Database = {
           partner_type: Database["public"]["Enums"]["partner_type"] | null
           phone: string | null
           profession: string | null
+          profession_descriptions: Json | null
           rutube: string | null
           self_description: string | null
           status: Database["public"]["Enums"]["partner_status"] | null
@@ -760,6 +764,7 @@ export type Database = {
           partner_type?: Database["public"]["Enums"]["partner_type"] | null
           phone?: string | null
           profession?: string | null
+          profession_descriptions?: Json | null
           rutube?: string | null
           self_description?: string | null
           status?: Database["public"]["Enums"]["partner_status"] | null
@@ -790,6 +795,7 @@ export type Database = {
           partner_type?: Database["public"]["Enums"]["partner_type"] | null
           phone?: string | null
           profession?: string | null
+          profession_descriptions?: Json | null
           rutube?: string | null
           self_description?: string | null
           status?: Database["public"]["Enums"]["partner_status"] | null

@@ -14,6 +14,7 @@ interface PublishRequest {
 interface PartnerData {
   name: string
   profession?: string | null
+  profession_descriptions?: Record<string, string> | null
   city?: string | null
   age?: number | null
   agency_name?: string | null
@@ -127,42 +128,54 @@ async function sendMessageToChannel(chatId: string | number, text: string) {
 function formatPartnerCaption(partner: PartnerData) {
   let message = ''
   
-  // Header with name and info
+  // Header with name
   message += `<b>${partner.name}</b>\n`
   
+  // Info line with profession, city, age
   const info: string[] = []
   if (partner.profession) info.push(partner.profession)
   if (partner.city) info.push(`📍 ${partner.city}`)
   if (partner.age) info.push(`${partner.age} лет`)
   
   if (info.length > 0) {
-    message += info.join(' • ') + '\n\n'
-  } else {
-    message += '\n'
+    message += info.join(' • ') + '\n'
+  }
+  message += '\n'
+  
+  // Profession descriptions in quote blocks
+  if (partner.profession_descriptions && typeof partner.profession_descriptions === 'object') {
+    const professions = partner.profession ? partner.profession.split(', ').map(p => p.trim()) : []
+    
+    for (const prof of professions) {
+      const desc = partner.profession_descriptions[prof]
+      if (desc && desc.trim()) {
+        message += `❝ <b>${prof}:</b> ${desc.trim()} ❞\n\n`
+      }
+    }
+  }
+  
+  // About section in quote block
+  if (partner.self_description) {
+    message += `❝ <b>О себе:</b>\n${partner.self_description.trim()} ❞\n\n`
   }
   
   // Agency info
   if (partner.agency_name) {
     message += `🏢 <b>${partner.agency_name}</b>\n`
+    if (partner.agency_description) {
+      message += `❝ ${partner.agency_description.trim()} ❞\n`
+    }
+    message += '\n'
   }
   
-  // Секция "Об агентстве"
-  if (partner.agency_description) {
-    message += `\n<b>Об агентстве:</b>\n「 ${partner.agency_description} 」\n`
-  }
-  
-  // Секция "О себе"
-  if (partner.self_description) {
-    message += `\n<b>О себе:</b>\n「 ${partner.self_description} 」\n`
-  }
-  
-  // Контакты
-  message += '\n<b>Контакты:</b>\n'
+  // Contacts section
+  message += '<b>Контакты:</b>\n'
   
   if (partner.phone) {
     message += `📞 ${partner.phone}\n`
   }
   
+  // Links on one line with separators
   const links: string[] = []
   
   if (partner.tg_channel) {
@@ -194,7 +207,25 @@ function formatPartnerCaption(partner: PartnerData) {
   }
   
   if (links.length > 0) {
-    message += links.join(' | ')
+    message += links.join(' | ') + '\n'
+  }
+  
+  // Office address
+  if (partner.office_address) {
+    message += `\n<b>Адрес офиса:</b> ${partner.office_address}\n`
+  }
+  
+  // Hashtags from professions
+  if (partner.profession) {
+    const hashtags = partner.profession
+      .split(', ')
+      .map(p => p.trim())
+      .filter(p => p)
+      .map(p => '#' + p.replace(/[\s-]+/g, '').replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, ''))
+    
+    if (hashtags.length > 0) {
+      message += '\n' + hashtags.join(' ')
+    }
   }
   
   return message.trim()
@@ -302,6 +333,7 @@ Deno.serve(async (req) => {
 
     // Форматируем текстовый caption
     const caption = formatPartnerCaption(partnerData)
+    console.log('Generated caption:', caption)
 
     let result: { result: { message_id: number } }
 
