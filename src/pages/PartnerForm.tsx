@@ -11,6 +11,7 @@ const getInitialFormData = (userName: string): PartnerFormData => ({
   name: userName,
   birthDate: '',
   professions: [],
+  professionDescriptions: {},
   city: '',
   agency_name: '',
   agency_description: '',
@@ -81,6 +82,7 @@ interface PartnerFormData {
   name: string;
   birthDate: string;
   professions: string[];
+  professionDescriptions: Record<string, string>;
   city: string;
   agency_name: string;
   agency_description: string;
@@ -484,6 +486,7 @@ export default function PartnerForm() {
           name: formData.name,
           age: formData.birthDate ? Math.floor((new Date().getTime() - new Date(formData.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
           profession: formData.professions.join(', ') || null,
+          profession_descriptions: Object.keys(formData.professionDescriptions).length > 0 ? formData.professionDescriptions : null,
           city: formData.city || null,
           agency_name: formData.agency_name || null,
           agency_description: formData.agency_description || null,
@@ -690,14 +693,51 @@ export default function PartnerForm() {
                              (formData.agency_description.trim().length >= 10 ? 1 : 0);
         const block2Filled = formData.self_description.trim().length >= 10 ? 1 : 0;
         
+        // Count filled profession descriptions
+        const professionDescsFilled = formData.professions.filter(
+          p => (formData.professionDescriptions[p] || '').trim().length >= 10
+        ).length;
+        
         return (
           <div className="space-y-4">
+            {/* Profession-specific descriptions - only show if 2+ professions selected */}
+            {formData.professions.length >= 2 && (
+              <ProgressCard 
+                title="Описание по профессиям"
+                filledCount={professionDescsFilled}
+                totalCount={formData.professions.length}
+                delay={0}
+              >
+                <div className="space-y-4">
+                  {formData.professions.map((profession, index) => (
+                    <FormInput
+                      key={profession}
+                      label={`Расскажите о себе как ${profession}`}
+                      multiline
+                      value={formData.professionDescriptions[profession] || ''}
+                      onChange={e => {
+                        setFormData(prev => ({
+                          ...prev,
+                          professionDescriptions: {
+                            ...prev.professionDescriptions,
+                            [profession]: e.target.value
+                          }
+                        }));
+                      }}
+                      placeholder={`Ваш опыт и достижения как ${profession}...`}
+                      success={(formData.professionDescriptions[profession] || '').trim().length >= 10}
+                    />
+                  ))}
+                </div>
+              </ProgressCard>
+            )}
+
             {(isVisible('agency_name', true) || isVisible('agency_description', true)) && (
               <ProgressCard 
                 title="Агентство"
                 filledCount={block1Filled}
                 totalCount={2}
-                delay={0}
+                delay={formData.professions.length >= 2 ? 0.1 : 0}
               >
                 {isVisible('agency_name', true) && (
                   <FormInput
@@ -732,7 +772,7 @@ export default function PartnerForm() {
                 title="О себе"
                 filledCount={block2Filled}
                 totalCount={1}
-                delay={0.1}
+                delay={formData.professions.length >= 2 ? 0.2 : 0.1}
               >
                 <FormInput
                   label={getLabel('self_description', t('selfDescription'))}
