@@ -76,8 +76,37 @@ async function getCardTemplate(supabase: any, templateId: string | null): Promis
   return anyTemplate || null
 }
 
+// Helper to ensure HTTPS URL (Telegram requires HTTPS)
+function ensureHttps(url: string | null | undefined): string | null {
+  if (!url) return null
+  
+  // If already HTTPS, return as is
+  if (url.startsWith('https://')) return url
+  
+  // If HTTP, convert to HTTPS
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://')
+  }
+  
+  // If no protocol, add HTTPS
+  if (!url.startsWith('http')) {
+    return `https://${url}`
+  }
+  
+  return url
+}
+
 async function sendPhotoToChannel(chatId: string | number, photoUrl: string, caption: string) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`
+  
+  // Ensure photo URL uses HTTPS
+  const httpsPhotoUrl = ensureHttps(photoUrl)
+  
+  if (!httpsPhotoUrl) {
+    throw new Error('Invalid photo URL')
+  }
+  
+  console.log('Sending photo with URL:', httpsPhotoUrl)
   
   const response = await fetch(url, {
     method: 'POST',
@@ -86,7 +115,7 @@ async function sendPhotoToChannel(chatId: string | number, photoUrl: string, cap
     },
     body: JSON.stringify({
       chat_id: chatId,
-      photo: photoUrl,
+      photo: httpsPhotoUrl,
       caption: caption,
       parse_mode: 'HTML',
       show_caption_above_media: true,  // Show caption above photo for better readability
@@ -96,6 +125,7 @@ async function sendPhotoToChannel(chatId: string | number, photoUrl: string, cap
   if (!response.ok) {
     const error = await response.text()
     console.error('Telegram API error:', error)
+    console.error('Photo URL was:', httpsPhotoUrl)
     throw new Error(`Telegram API error: ${error}`)
   }
 
