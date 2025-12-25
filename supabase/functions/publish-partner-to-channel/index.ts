@@ -202,7 +202,7 @@ function formatPartnerCaption(partner: PartnerData) {
   
   // Header with name and decorative line
   message += `${customEmoji(CUSTOM_EMOJI.crown)} <b>${partner.name}</b> ${customEmoji(CUSTOM_EMOJI.star)}\n`
-  message += `<blockquote>═══════════════════</blockquote>\n`
+  message += `<i>═══════════════════</i>\n`
   
   // Info line with profession, city, age - enhanced formatting
   const info: string[] = []
@@ -229,28 +229,28 @@ function formatPartnerCaption(partner: PartnerData) {
       const desc = partner.profession_descriptions[prof]
       if (desc && desc.trim()) {
         message += `${customEmoji(CUSTOM_EMOJI.sparkles)} <b>${prof}:</b>\n`
-        message += `<blockquote expandable>${desc.trim()}</blockquote>\n\n`
+        message += `${desc.trim()}\n\n`
       }
     }
   }
   
-  // About section in blockquote
+  // About section
   if (partner.self_description) {
     message += `${customEmoji(CUSTOM_EMOJI.heart)} <b>О себе:</b>\n`
-    message += `<blockquote expandable>${partner.self_description.trim()}</blockquote>\n\n`
+    message += `${partner.self_description.trim()}\n\n`
   }
   
   // Agency info with enhanced formatting
   if (partner.agency_name) {
     message += `${customEmoji(CUSTOM_EMOJI.fire)} <b>${partner.agency_name}</b>\n`
     if (partner.agency_description) {
-      message += `<blockquote>${partner.agency_description.trim()}</blockquote>\n`
+      message += `${partner.agency_description.trim()}\n`
     }
     message += '\n'
   }
   
   // Contacts section with separator
-  message += `<blockquote>═══════════════════</blockquote>\n`
+  message += `<i>═══════════════════</i>\n`
   message += `${customEmoji(CUSTOM_EMOJI.link)} <b>Контакты:</b>\n\n`
   
   if (partner.phone) {
@@ -306,7 +306,7 @@ function formatPartnerCaption(partner: PartnerData) {
       .map(p => '#' + p.replace(/[\s-]+/g, '').replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, ''))
     
     if (hashtags.length > 0) {
-      message += '\n<blockquote>═══════════════════</blockquote>\n'
+      message += '\n<i>═══════════════════</i>\n'
       message += hashtags.join(' ') + ' '
       message += customEmoji(CUSTOM_EMOJI.sparkles)
     }
