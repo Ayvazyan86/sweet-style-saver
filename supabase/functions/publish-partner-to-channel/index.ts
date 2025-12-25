@@ -89,6 +89,7 @@ async function sendPhotoToChannel(chatId: string | number, photoUrl: string, cap
       photo: photoUrl,
       caption: caption,
       parse_mode: 'HTML',
+      show_caption_above_media: true,  // Show caption above photo for better readability
     }),
   })
 
@@ -113,6 +114,10 @@ async function sendMessageToChannel(chatId: string | number, text: string) {
       chat_id: chatId,
       text: text,
       parse_mode: 'HTML',
+      link_preview_options: {
+        is_disabled: false,
+        prefer_large_media: true,
+      },
     }),
   })
 
@@ -125,57 +130,86 @@ async function sendMessageToChannel(chatId: string | number, text: string) {
   return response.json()
 }
 
+// Custom emoji IDs from telegram packs
+const CUSTOM_EMOJI = {
+  star: '5370869711888194012',        // ⭐ from G5ART pack
+  fire: '5368324170671202286',       // 🔥 from G5ART pack
+  heart: '5370984529235089419',      // ❤️ from G5ART pack
+  sparkles: '5372981976452164567',   // ✨ from G5ART pack
+  diamond: '5377599288861913143',    // 💎 from minec_emoji
+  crown: '5370869711888194013',      // 👑 from G5ART pack
+  check: '5368324170671202290',      // ✅ from G5ART pack
+  location: '5372981976452164570',   // 📍 from G5ART pack
+  phone: '5370984529235089420',      // 📞 from G5ART pack
+  link: '5368324170671202288',       // 🔗 from G5ART pack
+}
+
+// Helper function to create custom emoji
+function customEmoji(emojiId: string): string {
+  return `<tg-emoji emoji-id="${emojiId}"></tg-emoji>`
+}
+
 function formatPartnerCaption(partner: PartnerData) {
   let message = ''
   
-  // Header with name
-  message += `<b>${partner.name}</b>\n`
+  // Header with name and decorative line
+  message += `${customEmoji(CUSTOM_EMOJI.crown)} <b>${partner.name}</b> ${customEmoji(CUSTOM_EMOJI.star)}\n`
+  message += `<blockquote>═══════════════════</blockquote>\n`
   
-  // Info line with profession, city, age
+  // Info line with profession, city, age - enhanced formatting
   const info: string[] = []
-  if (partner.profession) info.push(partner.profession)
-  if (partner.city) info.push(`📍 ${partner.city}`)
-  if (partner.age) info.push(`${partner.age} лет`)
+  if (partner.profession) {
+    info.push(`${customEmoji(CUSTOM_EMOJI.diamond)} <b>${partner.profession}</b>`)
+  }
+  if (partner.city) {
+    info.push(`${customEmoji(CUSTOM_EMOJI.location)} ${partner.city}`)
+  }
+  if (partner.age) {
+    info.push(`${partner.age} лет`)
+  }
   
   if (info.length > 0) {
     message += info.join(' • ') + '\n'
   }
   message += '\n'
   
-  // Profession descriptions in quote blocks
+  // Profession descriptions in expandable spoilers
   if (partner.profession_descriptions && typeof partner.profession_descriptions === 'object') {
     const professions = partner.profession ? partner.profession.split(', ').map(p => p.trim()) : []
     
     for (const prof of professions) {
       const desc = partner.profession_descriptions[prof]
       if (desc && desc.trim()) {
-        message += `❝ <b>${prof}:</b> ${desc.trim()} ❞\n\n`
+        message += `${customEmoji(CUSTOM_EMOJI.sparkles)} <b>${prof}:</b>\n`
+        message += `<blockquote expandable>${desc.trim()}</blockquote>\n\n`
       }
     }
   }
   
-  // About section in quote block
+  // About section in blockquote
   if (partner.self_description) {
-    message += `❝ <b>О себе:</b>\n${partner.self_description.trim()} ❞\n\n`
+    message += `${customEmoji(CUSTOM_EMOJI.heart)} <b>О себе:</b>\n`
+    message += `<blockquote expandable>${partner.self_description.trim()}</blockquote>\n\n`
   }
   
-  // Agency info
+  // Agency info with enhanced formatting
   if (partner.agency_name) {
-    message += `🏢 <b>${partner.agency_name}</b>\n`
+    message += `${customEmoji(CUSTOM_EMOJI.fire)} <b>${partner.agency_name}</b>\n`
     if (partner.agency_description) {
-      message += `❝ ${partner.agency_description.trim()} ❞\n`
+      message += `<blockquote>${partner.agency_description.trim()}</blockquote>\n`
     }
     message += '\n'
   }
   
-  // Contacts section
-  message += '<b>Контакты:</b>\n'
+  // Contacts section with separator
+  message += `<blockquote>═══════════════════</blockquote>\n`
+  message += `${customEmoji(CUSTOM_EMOJI.link)} <b>Контакты:</b>\n\n`
   
   if (partner.phone) {
-    message += `📞 ${partner.phone}\n`
+    message += `${customEmoji(CUSTOM_EMOJI.phone)} <code>${partner.phone}</code>\n`
   }
   
-  // Links on one line with separators
+  // Links with enhanced formatting
   const links: string[] = []
   
   if (partner.tg_channel) {
@@ -207,15 +241,15 @@ function formatPartnerCaption(partner: PartnerData) {
   }
   
   if (links.length > 0) {
-    message += links.join(' | ') + '\n'
+    message += '\n' + links.join(' <b>|</b> ') + '\n'
   }
   
-  // Office address
+  // Office address with location emoji
   if (partner.office_address) {
-    message += `\n<b>Адрес офиса:</b> ${partner.office_address}\n`
+    message += `\n${customEmoji(CUSTOM_EMOJI.location)} <b>Адрес:</b> <i>${partner.office_address}</i>\n`
   }
   
-  // Hashtags from professions
+  // Hashtags from professions with enhanced styling
   if (partner.profession) {
     const hashtags = partner.profession
       .split(', ')
@@ -224,7 +258,9 @@ function formatPartnerCaption(partner: PartnerData) {
       .map(p => '#' + p.replace(/[\s-]+/g, '').replace(/[^a-zA-Zа-яА-ЯёЁ0-9]/g, ''))
     
     if (hashtags.length > 0) {
-      message += '\n' + hashtags.join(' ')
+      message += '\n<blockquote>═══════════════════</blockquote>\n'
+      message += hashtags.join(' ') + ' '
+      message += customEmoji(CUSTOM_EMOJI.sparkles)
     }
   }
   
