@@ -215,7 +215,7 @@ ${record.phone ? `📞 <b>Телефон:</b> ${record.phone}` : ''}
         [
           {
             text: '📋 Перейти к модерации',
-            url: `https://style-keeper-hub.lovable.app/admin/applications`
+            url: `http://85.198.67.7/admin/applications`
           }
         ]
       ]
