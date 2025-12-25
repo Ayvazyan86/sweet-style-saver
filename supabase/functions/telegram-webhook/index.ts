@@ -107,8 +107,8 @@ async function ensureUserProfile(user: TelegramUser) {
 
 // Получаем URL мини-приложения из переменных окружения или формируем из project_id
 function getMiniAppUrl(): string {
-  // Используем URL текущего проекта
-  return 'https://kbjeggprymvkxhfnahxc.lovable.app';
+  // Используем URL сервера вместо Lovable
+  return 'http://85.198.67.7';
 }
 
 async function handleStartCommand(message: TelegramMessage) {
