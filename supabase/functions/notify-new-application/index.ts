@@ -215,7 +215,7 @@ ${record.phone ? `📞 <b>Телефон:</b> ${record.phone}` : ''}
         [
           {
             text: '📋 Перейти к модерации',
-            url: `http://85.198.67.7/admin/applications`
+            url: `http://ayvazyan-rekomenduet.ru/admin/applications`
           }
         ]
       ]
