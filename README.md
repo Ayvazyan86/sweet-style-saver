@@ -1,73 +1,90 @@
-# Welcome to your Lovable project
+# Айвазян рекомендует — Telegram Mini App
 
-## Project info
+> Платформа для размещения и поиска проверенных специалистов через Telegram
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Технологии
 
-## How can I edit this code?
+- **Frontend:** React + TypeScript + Vite
+- **UI:** shadcn/ui + Tailwind CSS
+- **Backend:** Supabase (PostgreSQL + Edge Functions)
+- **Deployment:** VPS (Nginx) + GitHub Actions
+- **Telegram:** Mini App SDK
 
-There are several ways of editing your application.
+## 📦 Установка
 
-**Use Lovable**
+```bash
+# Клонировать репозиторий
+git clone https://github.com/Ayvazyan86/sweet-style-saver.git
+cd sweet-style-saver
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+# Установить зависимости
+npm install
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Запустить dev сервер
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 🔧 Конфигурация
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Создайте `.env` файл:
 
-**Use GitHub Codespaces**
+```env
+VITE_SUPABASE_PROJECT_ID=your_project_id
+VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key
+VITE_SUPABASE_URL=https://your-project.supabase.co
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🚀 Deployment
 
-## What technologies are used for this project?
+### Автоматический deployment
 
-This project is built with:
+Проект настроен на автоматический deployment через GitHub Actions:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+# Внесите изменения
+git add .
+git commit -m "описание изменений"
+git push
 
-## How can I deploy this project?
+# GitHub Actions автоматически:
+# 1. Соберёт приложение (npm run build)
+# 2. Загрузит на сервер
+# 3. Перезапустит Nginx
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Ручной deployment
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+# Собрать приложение
+npm run build
 
-Yes, you can!
+# Загрузить на сервер
+python upload-dist.py
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📁 Структура проекта
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```
+.
+├── src/
+│   ├── components/     # React компоненты
+│   ├── pages/          # Страницы приложения
+│   ├── hooks/          # Custom hooks
+│   └── integrations/   # Supabase интеграция
+├── supabase/
+│   ├── functions/      # Edge Functions
+│   └── migrations/     # Миграции БД
+├── .github/
+│   └── workflows/      # GitHub Actions
+└── public/             # Статические файлы
+```
+
+## 🔗 Полезные ссылки
+
+- **Сайт:** http://ayvazyan-rekomenduet.ru
+- **Telegram канал:** [@av_rekomenduet](https://t.me/av_rekomenduet)
+- **Telegram бот:** [@av_rekomenduet_bot](https://t.me/av_rekomenduet_bot)
+
+## 📝 Лицензия
+
+Private project
