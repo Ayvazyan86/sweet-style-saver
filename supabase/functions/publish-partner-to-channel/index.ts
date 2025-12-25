@@ -80,6 +80,9 @@ async function getCardTemplate(supabase: any, templateId: string | null): Promis
 function ensureHttps(url: string | null | undefined): string | null {
   if (!url) return null
   
+  // Trim whitespace
+  url = url.trim()
+  
   // If already HTTPS, return as is
   if (url.startsWith('https://')) return url
   
@@ -96,6 +99,16 @@ function ensureHttps(url: string | null | undefined): string | null {
   return url
 }
 
+// Validate URL format
+function isValidUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url)
+    return urlObj.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 async function sendPhotoToChannel(chatId: string | number, photoUrl: string, caption: string) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`
   
@@ -103,7 +116,12 @@ async function sendPhotoToChannel(chatId: string | number, photoUrl: string, cap
   const httpsPhotoUrl = ensureHttps(photoUrl)
   
   if (!httpsPhotoUrl) {
-    throw new Error('Invalid photo URL')
+    throw new Error('Invalid photo URL: URL is empty')
+  }
+  
+  // Validate URL format
+  if (!isValidUrl(httpsPhotoUrl)) {
+    throw new Error(`Invalid photo URL format: ${httpsPhotoUrl}`)
   }
   
   console.log('Sending photo with URL:', httpsPhotoUrl)
@@ -407,8 +425,22 @@ Deno.serve(async (req) => {
     const imageToSend = template?.image_url || photoUrl
     
     if (imageToSend) {
-      console.log('Publishing with image:', imageToSend)
-      result = await sendPhotoToChannel(channelId, imageToSend, caption)
+      // Ensure HTTPS and validate URL
+      const validImageUrl = ensureHttps(imageToSend)
+      
+      if (validImageUrl && isValidUrl(validImageUrl)) {
+        console.log('Publishing with image:', validImageUrl)
+        try {
+          result = await sendPhotoToChannel(channelId, validImageUrl, caption)
+        } catch (photoError) {
+          console.error('Failed to send photo, falling back to text-only:', photoError)
+          console.log('Publishing without image (fallback)')
+          result = await sendMessageToChannel(channelId, caption)
+        }
+      } else {
+        console.warn('Invalid image URL, publishing text-only:', imageToSend)
+        result = await sendMessageToChannel(channelId, caption)
+      }
     } else {
       console.log('Publishing without image')
       result = await sendMessageToChannel(channelId, caption)
