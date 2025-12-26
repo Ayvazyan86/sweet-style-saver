@@ -37,8 +37,7 @@ import {
 type Profession = {
   id: string;
   name: string;
-  name_en: string | null;
-  slug: string;
+  category_id: string | null;
   sort_order: number | null;
   is_active: boolean | null;
   created_at: string;
@@ -49,7 +48,7 @@ export default function AdminProfessions() {
   const [editingProfession, setEditingProfession] = useState<Profession | null>(null);
   const [deletingProfession, setDeletingProfession] = useState<Profession | null>(null);
   const [isAddingProfession, setIsAddingProfession] = useState(false);
-  const [newProfession, setNewProfession] = useState({ name: '', name_en: '', slug: '' });
+  const [newProfession, setNewProfession] = useState({ name: '' });
 
   const { data: professions, isLoading } = useQuery({
     queryKey: ['admin-professions'],
@@ -61,18 +60,16 @@ export default function AdminProfessions() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async (profession: { name: string; name_en: string; slug: string }) => {
+    mutationFn: async (profession: { name: string }) => {
       const { error } = await api.professions.create({
         name: profession.name,
-        name_en: profession.name_en || null,
-        slug: profession.slug || profession.name.toLowerCase().replace(/\s+/g, '-'),
       });
       if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
       setIsAddingProfession(false);
-      setNewProfession({ name: '', name_en: '', slug: '' });
+      setNewProfession({ name: '' });
       toast.success('Профессия добавлена');
     },
     onError: (error) => {
@@ -84,8 +81,6 @@ export default function AdminProfessions() {
     mutationFn: async (profession: Partial<Profession> & { id: string }) => {
       const { error } = await api.professions.update(profession.id, {
         name: profession.name,
-        name_en: profession.name_en,
-        slug: profession.slug,
         is_active: profession.is_active
       });
       if (error) throw new Error(error);
@@ -165,9 +160,6 @@ export default function AdminProfessions() {
                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
                     <div>
                       <p className="font-medium text-foreground">{profession.name}</p>
-                      {profession.name_en && (
-                        <p className="text-sm text-muted-foreground">{profession.name_en}</p>
-                      )}
                     </div>
                     {!profession.is_active && (
                       <Badge variant="secondary">Скрыта</Badge>
@@ -209,32 +201,12 @@ export default function AdminProfessions() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="prof-name">Название (RU) *</Label>
+              <Label htmlFor="prof-name">Название *</Label>
               <Input
                 id="prof-name"
                 value={newProfession.name}
                 onChange={(e) => setNewProfession({ ...newProfession, name: e.target.value })}
                 placeholder="Например: Риэлтор"
-                className="bg-input border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="prof-name_en">Название (EN)</Label>
-              <Input
-                id="prof-name_en"
-                value={newProfession.name_en}
-                onChange={(e) => setNewProfession({ ...newProfession, name_en: e.target.value })}
-                placeholder="Например: Realtor"
-                className="bg-input border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="prof-slug">Slug (URL)</Label>
-              <Input
-                id="prof-slug"
-                value={newProfession.slug}
-                onChange={(e) => setNewProfession({ ...newProfession, slug: e.target.value })}
-                placeholder="Например: realtor"
                 className="bg-input border-border"
               />
             </div>
@@ -309,37 +281,17 @@ function EditProfessionForm({
 }) {
   const [formData, setFormData] = useState({
     name: profession.name,
-    name_en: profession.name_en || '',
-    slug: profession.slug,
     is_active: profession.is_active ?? true,
   });
 
   return (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
-        <Label htmlFor="edit-prof-name">Название (RU) *</Label>
+        <Label htmlFor="edit-prof-name">Название *</Label>
         <Input
           id="edit-prof-name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="bg-input border-border"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="edit-prof-name_en">Название (EN)</Label>
-        <Input
-          id="edit-prof-name_en"
-          value={formData.name_en}
-          onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
-          className="bg-input border-border"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="edit-prof-slug">Slug (URL)</Label>
-        <Input
-          id="edit-prof-slug"
-          value={formData.slug}
-          onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
           className="bg-input border-border"
         />
       </div>

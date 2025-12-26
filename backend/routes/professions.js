@@ -29,16 +29,16 @@ router.get('/', async (req, res) => {
 // POST /api/professions - Create profession
 router.post('/', async (req, res) => {
   try {
-    const { name, name_en, slug, is_active } = req.body;
+    const { name, category_id, is_active } = req.body;
     
     // Get max sort_order
     const maxSort = await pool.query('SELECT MAX(sort_order) as max FROM professions');
     const sortOrder = (maxSort.rows[0].max || 0) + 1;
     
     const result = await pool.query(
-      `INSERT INTO professions (name, name_en, slug, sort_order, is_active) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [name, name_en || null, slug || name.toLowerCase().replace(/\s+/g, '-'), sortOrder, is_active !== false]
+      `INSERT INTO professions (name, category_id, sort_order, is_active) 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, category_id || null, sortOrder, is_active !== false]
     );
 
     res.json({ data: result.rows[0] });
@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, name_en, slug, is_active, sort_order } = req.body;
+    const { name, category_id, is_active, sort_order } = req.body;
     
     const updates = [];
     const values = [];
@@ -62,13 +62,9 @@ router.patch('/:id', async (req, res) => {
       updates.push(`name = $${paramCount++}`);
       values.push(name);
     }
-    if (name_en !== undefined) {
-      updates.push(`name_en = $${paramCount++}`);
-      values.push(name_en);
-    }
-    if (slug !== undefined) {
-      updates.push(`slug = $${paramCount++}`);
-      values.push(slug);
+    if (category_id !== undefined) {
+      updates.push(`category_id = $${paramCount++}`);
+      values.push(category_id);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramCount++}`);

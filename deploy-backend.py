@@ -66,6 +66,9 @@ echo "Директории созданы"
         ('backend/routes/orders.js', '/var/www/backend/routes/orders.js'),
         ('backend/routes/questions.js', '/var/www/backend/routes/questions.js'),
         ('backend/routes/categories.js', '/var/www/backend/routes/categories.js'),
+        ('backend/routes/professions.js', '/var/www/backend/routes/professions.js'),
+        ('backend/routes/settings.js', '/var/www/backend/routes/settings.js'),
+        ('backend/routes/card-templates.js', '/var/www/backend/routes/card-templates.js'),
         ('backend/routes/admin.js', '/var/www/backend/routes/admin.js'),
         ('backend/routes/upload.js', '/var/www/backend/routes/upload.js'),
         ('backend/routes/telegram.js', '/var/www/backend/routes/telegram.js'),
@@ -94,7 +97,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=sweet_style_saver
 DB_USER=app_user
-DB_PASSWORD=SecurePass_2024!Sweet
+DB_PASSWORD=app_password_2024
 
 # JWT
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production_12345678
