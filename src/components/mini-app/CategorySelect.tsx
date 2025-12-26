@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Check, X, ChevronDown, Search, 
   Camera, Video, PenTool, Scale, Megaphone, Heart, Brain, 
@@ -153,13 +153,9 @@ export const CategorySelect = ({ selectedIds, onChange, multiple = true, error }
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name, name_en, slug')
-        .eq('is_active', true)
-        .order('sort_order');
+      const { data, error } = await api.categories.list(true);
 
-      if (error) throw error;
+      if (error) throw new Error(error);
       setCategories(data || []);
     } catch (err) {
       console.error('Error fetching categories:', err);

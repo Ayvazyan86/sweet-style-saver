@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { MapPin, Loader2, Check, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -96,9 +96,7 @@ export const AddressAutocomplete = ({
       if (inputValue.length >= 5 && inputValue !== value) {
         setIsLoading(true);
         try {
-          const { data, error: fnError } = await supabase.functions.invoke('geocode-address', {
-            body: { address: inputValue }
-          });
+          const { data, error: fnError } = await api.geocode.address(inputValue);
 
           if (!fnError && data?.suggestions) {
             const addressSuggestions: AddressSuggestion[] = data.suggestions.map((s: any) => ({

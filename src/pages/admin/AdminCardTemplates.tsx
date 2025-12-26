@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -27,20 +27,17 @@ export default function AdminCardTemplates() {
   const { data: templates, isLoading } = useQuery({
     queryKey: ["card-templates-admin"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("card_templates")
-        .select("id, name, image_url")
-        .order("created_at", { ascending: false });
+      const { data, error } = await api.cardTemplates.list();
 
-      if (error) throw error;
+      if (error) throw new Error(error);
       return data as CardTemplate[];
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("card_templates").delete().eq("id", id);
-      if (error) throw error;
+      const { error } = await api.cardTemplates.delete(id);
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["card-templates-admin"] });
@@ -52,29 +49,14 @@ export default function AdminCardTemplates() {
   });
 
   const uploadAndCreateTemplate = async (file: File): Promise<void> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `template_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `card-templates/${fileName}`;
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('name', file.name.replace(/\.[^/.]+$/, ""));
+    formData.append('description', '');
 
-    const { error: uploadError } = await supabase.storage
-      .from("partner-photos")
-      .upload(filePath, file);
+    const { error } = await api.cardTemplates.create(formData);
 
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = supabase.storage
-      .from("partner-photos")
-      .getPublicUrl(filePath);
-
-    // Генерируем имя из имени файла (без расширения)
-    const templateName = file.name.replace(/\.[^/.]+$/, "");
-
-    const { error: insertError } = await supabase.from("card_templates").insert([{ 
-      name: templateName, 
-      image_url: urlData.publicUrl 
-    }]);
-
-    if (insertError) throw insertError;
+    if (error) throw new Error(error);
   };
 
   const processFiles = async (files: File[]) => {

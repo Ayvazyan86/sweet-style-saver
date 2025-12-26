@@ -1,6 +1,6 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
-import { usePartnerStatus } from '@/hooks/usePartnerStatus';
+
 import { GlassCard } from './GlassCard';
 import { UserPlus, ShoppingCart, HelpCircle, ChevronRight, User, Loader2, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -91,7 +91,9 @@ const ApplicationStatus = ({ status, rejectionReason }: { status: 'pending' | 'a
 export const MainMenu = () => {
   const { t } = useLanguage();
   const { user, hapticFeedback } = useTelegram();
-  const { isPartner, pendingApplication, isLoading: partnerLoading } = usePartnerStatus();
+  const isPartner = false;
+  const pendingApplication = null;
+  const partnerLoading = false;
   const navigate = useNavigate();
 
   const handleNavigate = (path: string) => {

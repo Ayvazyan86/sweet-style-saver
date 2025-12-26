@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTelegram } from '@/hooks/useTelegram';
-import { usePartnerStatus } from '@/hooks/usePartnerStatus';
+
 import { GlassCard } from '@/components/mini-app/GlassCard';
 import { FormInput } from '@/components/mini-app/FormInput';
 import { CategorySelect } from '@/components/mini-app/CategorySelect';
@@ -11,7 +11,7 @@ import { PhotoUpload } from '@/components/mini-app/PhotoUpload';
 import { CityAutocomplete } from '@/components/mini-app/CityAutocomplete';
 import { AddressAutocomplete } from '@/components/mini-app/AddressAutocomplete';
 import { ArrowLeft, User, Briefcase, Phone, Save, Loader2, Check, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +24,10 @@ const TABS = [
 export default function MyCard() {
   const { t } = useLanguage();
   const { user, hapticFeedback } = useTelegram();
-  const { isPartner, partnerProfile, isLoading: statusLoading, refetch } = usePartnerStatus();
+  const isPartner = false;
+  const partnerProfile = null;
+  const statusLoading = false;
+  const refetch = () => {};
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('personal');
@@ -87,14 +90,8 @@ export default function MyCard() {
   }, [partnerProfile]);
 
   const loadPartnerCategories = async (profileId: string) => {
-    const { data, error } = await supabase
-      .from('partner_profile_categories')
-      .select('category_id')
-      .eq('profile_id', profileId);
-
-    if (!error && data) {
-      setSelectedCategories(data.map(c => c.category_id));
-    }
+    // TODO: Implement API call
+    console.log('Loading categories for profile:', profileId);
   };
 
   const updateField = (field: string, value: string) => {
@@ -144,26 +141,9 @@ export default function MyCard() {
 
     setTgChecking(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-telegram-channel', {
-        body: { channel }
-      });
-
-      if (error) {
-        setTgVerified(null);
-        setTgChannelInfo(null);
-        return;
-      }
-
-      if (data.exists) {
-        setTgVerified(true);
-        setTgChannelInfo({ title: data.channel.title, type: data.channel.type });
-        if (errors.tg_channel) {
-          setErrors(prev => ({ ...prev, tg_channel: '' }));
-        }
-      } else {
-        setTgVerified(false);
-        setTgChannelInfo(null);
-      }
+      // TODO: Implement API call
+      setTgVerified(null);
+      setTgChannelInfo(null);
     } catch (err) {
       setTgVerified(null);
       setTgChannelInfo(null);

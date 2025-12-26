@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { MapPin, Check, Loader2, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -95,9 +95,7 @@ export function CityAutocomplete({
 
     setIsLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('geocode-city', {
-        body: { city: query }
-      });
+      const { data, error: fnError } = await api.geocode.city(query);
 
       if (fnError) {
         console.error('Geocode error:', fnError);

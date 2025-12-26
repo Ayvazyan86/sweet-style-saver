@@ -15,8 +15,8 @@ apt-get install -y nginx >/dev/null 2>&1
 mkdir -p /var/www/app/dist
 cat > /etc/nginx/sites-available/app << 'EOF'
 server {
-    listen 80 default_server;
-    server_name _;
+    listen 80;
+    server_name ayvazyan-rekomenduet.ru www.ayvazyan-rekomenduet.ru;
     root /var/www/app/dist;
     index index.html;
     location / { try_files $uri $uri/ /index.html; }
@@ -57,4 +57,5 @@ sftp.close()
 c.close()
 
 print("\nDeployment COMPLETE!")
-print("Check: http://85.198.67.7")
+print("HTTP Check: http://ayvazyan-rekomenduet.ru")
+print("\nNext step: Run 'python setup-ssl.py' to enable HTTPS")

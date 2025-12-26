@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 
 export interface FormFieldSetting {
   id: string;
@@ -16,13 +16,9 @@ export function useFormFieldSettings(formType: 'partner' | 'order' | 'question')
   const { data: settings, isLoading, error } = useQuery({
     queryKey: ['form-field-settings', formType],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('form_field_settings')
-        .select('*')
-        .eq('form_type', formType)
-        .order('sort_order');
+      const { data, error } = await api.settings.getFormFields(formType);
       
-      if (error) throw error;
+      if (error) throw new Error(error);
       return data as FormFieldSetting[];
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes

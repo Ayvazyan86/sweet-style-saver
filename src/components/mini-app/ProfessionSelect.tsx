@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -54,13 +54,8 @@ export const ProfessionSelect = ({
   const { data: categories } = useQuery({
     queryKey: ['profession-categories'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profession_categories')
-        .select('id, name, name_en, slug')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
+      const { data, error } = await api.categories.list(true);
+      if (error) throw new Error(error);
       return data as ProfessionCategory[];
     },
   });
@@ -68,14 +63,9 @@ export const ProfessionSelect = ({
   const { data: professions, isLoading } = useQuery({
     queryKey: ['professions-with-categories'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('professions')
-        .select('id, name, name_en, category_id')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-      return data as Profession[];
+      // TODO: Add professions endpoint to API
+      // For now, return empty array or fetch from categories
+      return [] as Profession[];
     },
   });
 

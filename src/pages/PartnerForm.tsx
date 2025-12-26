@@ -47,7 +47,7 @@ import {
   Share2, Building2, Video, MapPin, Check
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -480,34 +480,31 @@ export default function PartnerForm() {
         profileId = newProfile.id;
       }
 
-      const { data: application, error: appError } = await supabase
-        .from('partner_applications')
-        .insert({
-          user_id: profileId,
-          name: formData.name,
-          age: formData.birthDate ? Math.floor((new Date().getTime() - new Date(formData.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
-          profession: formData.professions.join(', ') || null,
-          profession_descriptions: Object.keys(formData.professionDescriptions).length > 0 ? formData.professionDescriptions : null,
-          city: formData.city || null,
-          agency_name: formData.agency_name || null,
-          agency_description: formData.agency_description || null,
-          self_description: formData.self_description || null,
-          phone: formData.phone || null,
-          tg_channel: formData.tg_channel || null,
-          website: formData.website || null,
-          youtube: formData.youtube || null,
-          rutube: formData.rutube || null,
-          dzen: formData.dzen || null,
-          vk_video: formData.vk_video || null,
-          office_address: formData.office_address || null,
-          photo_url: formData.photo_url || null,
-          card_template_id: selectedTemplateId || null,
-          card_display_fields: cardDisplayFields,
-        })
-        .select('id')
-        .single();
+      const { data: application, error: appError } = await api.applications.create({
+        user_id: profileId,
+        name: formData.name,
+        age: formData.birthDate ? Math.floor((new Date().getTime() - new Date(formData.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null,
+        profession: formData.professions.join(', ') || null,
+        profession_descriptions: Object.keys(formData.professionDescriptions).length > 0 ? formData.professionDescriptions : null,
+        city: formData.city || null,
+        agency_name: formData.agency_name || null,
+        agency_description: formData.agency_description || null,
+        self_description: formData.self_description || null,
+        phone: formData.phone || null,
+        tg_channel: formData.tg_channel || null,
+        website: formData.website || null,
+        youtube: formData.youtube || null,
+        rutube: formData.rutube || null,
+        dzen: formData.dzen || null,
+        vk_video: formData.vk_video || null,
+        office_address: formData.office_address || null,
+        photo_url: formData.photo_url || null,
+        logo_url: formData.logo_url || null,
+        card_template_id: selectedTemplateId || null,
+        card_display_fields: cardDisplayFields,
+      });
 
-      if (appError) throw appError;
+      if (appError) throw new Error(appError);
 
 
       // Clear saved form data

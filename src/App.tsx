@@ -39,6 +39,7 @@ const App = () => (
             <Route path="/my-card" element={<MyCard />} />
             
             {/* Admin routes */}
+            <Route path="/admin/auth" element={<AdminAuth />} />
             <Route path="/admin/login" element={<AdminAuth />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />

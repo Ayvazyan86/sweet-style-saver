@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Camera, X, Loader2, User, Image, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 
 interface PhotoUploadProps {
   value?: string;
@@ -35,30 +35,16 @@ export function PhotoUpload({ value, onChange, className, icon: Icon = User, hid
     setUploading(true);
 
     try {
-      // Генерируем уникальное имя файла
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      // Загружаем файл через API
+      const { data, error: uploadError } = await api.upload.file(file);
 
-      // Загружаем файл
-      const { error: uploadError } = await supabase.storage
-        .from('partner-photos')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
+      if (uploadError || !data) {
         console.error('Upload error:', uploadError);
         setError('Ошибка загрузки файла');
         return;
       }
 
-      // Получаем публичный URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('partner-photos')
-        .getPublicUrl(fileName);
-
-      onChange(publicUrl);
+      onChange(data.url);
     } catch (err) {
       console.error('Upload error:', err);
       setError('Ошибка загрузки файла');

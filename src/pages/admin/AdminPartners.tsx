@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,9 +46,21 @@ import {
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { Tables } from '@/integrations/supabase/types';
-
-type PartnerProfile = Tables<'partner_profiles'>;
+type PartnerProfile = {
+  id: string;
+  user_id: string;
+  application_id: string | null;
+  name: string;
+  age: number | null;
+  profession: string | null;
+  city: string | null;
+  phone: string | null;
+  status: string | null;
+  partner_type: string | null;
+  paid_until: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export default function AdminPartners() {
   const queryClient = useQueryClient();
@@ -62,12 +74,8 @@ export default function AdminPartners() {
   const { data: partners, isLoading } = useQuery({
     queryKey: ['admin-partners'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partner_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+      const { data, error } = await api.partners.list();
+      if (error) throw new Error(error);
       return data as PartnerProfile[];
     },
   });
@@ -75,12 +83,8 @@ export default function AdminPartners() {
   // Edit partner mutation
   const editMutation = useMutation({
     mutationFn: async (partner: Partial<PartnerProfile> & { id: string }) => {
-      const { error } = await supabase
-        .from('partner_profiles')
-        .update(partner)
-        .eq('id', partner.id);
-      
-      if (error) throw error;
+      const { error } = await api.partners.update(partner.id, partner);
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partners'] });
@@ -95,12 +99,8 @@ export default function AdminPartners() {
   // Delete partner mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('partner_profiles')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      const { error } = await api.partners.delete(id);
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partners'] });
@@ -119,15 +119,12 @@ export default function AdminPartners() {
       const currentPaidUntil = partner?.paid_until ? new Date(partner.paid_until) : new Date();
       const newPaidUntil = addDays(currentPaidUntil > new Date() ? currentPaidUntil : new Date(), days);
       
-      const { error } = await supabase
-        .from('partner_profiles')
-        .update({ 
-          paid_until: newPaidUntil.toISOString(),
-          partner_type: 'paid'
-        })
-        .eq('id', id);
+      const { error } = await api.partners.update(id, { 
+        paid_until: newPaidUntil.toISOString(),
+        partner_type: 'paid'
+      });
       
-      if (error) throw error;
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partners'] });

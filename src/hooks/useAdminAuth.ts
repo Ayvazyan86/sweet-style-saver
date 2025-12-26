@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { adminAuth, setAuthToken } from '@/lib/api';
+
+interface User {
+  id: string;
+  email?: string;
+}
+
+interface Session {
+  user: User;
+  access_token: string;
+}
 
 export function useAdminAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -9,70 +18,35 @@ export function useAdminAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Check admin role with setTimeout to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setLoading(false);
-        }
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        checkAdminRole(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // Check for existing token
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      setAuthToken(token);
+      setIsAdmin(true);
+      setUser({ id: 'admin', email: 'admin' });
+    }
+    setLoading(false);
   }, []);
 
-  const checkAdminRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin'
-      });
-      
-      if (error) {
-        console.error('Error checking admin role:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(data === true);
-      }
-    } catch (err) {
-      console.error('Error checking admin role:', err);
-      setIsAdmin(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await adminAuth.signIn(email, password);
+    if (data?.token) {
+      setAuthToken(data.token);
+      setIsAdmin(true);
+      setUser({ id: 'admin', email });
+      setSession({ user: { id: 'admin', email }, access_token: data.token });
+    }
     return { error };
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await adminAuth.signOut();
+    setAuthToken(null);
+    setIsAdmin(false);
+    setUser(null);
+    setSession(null);
     return { error };
   };
 

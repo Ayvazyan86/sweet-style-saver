@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,14 +31,38 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { Tables } from '@/integrations/supabase/types';
+
 import { Tag } from 'lucide-react';
 
-type PartnerApplication = Tables<'partner_applications'> & {
-  partner_application_categories?: {
-    category_id: string;
-    categories: { id: string; name: string } | null;
-  }[];
+type PartnerApplication = {
+  id: string;
+  user_id: string;
+  name: string;
+  age: number | null;
+  profession: string | null;
+  profession_descriptions: any;
+  city: string | null;
+  agency_name: string | null;
+  agency_description: string | null;
+  self_description: string | null;
+  phone: string | null;
+  tg_channel: string | null;
+  website: string | null;
+  youtube: string | null;
+  rutube: string | null;
+  dzen: string | null;
+  vk_video: string | null;
+  tg_video: string | null;
+  office_address: string | null;
+  card_template_id: string | null;
+  photo_url: string | null;
+  logo_url: string | null;
+  status: string | null;
+  created_at: string;
+  moderated_at: string | null;
+  moderated_by: string | null;
+  rejection_reason: string | null;
+  categories?: any[];
 };
 
 export default function AdminApplications() {
@@ -53,18 +77,8 @@ export default function AdminApplications() {
   const { data: applications, isLoading } = useQuery({
     queryKey: ['admin-applications'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partner_applications')
-        .select(`
-          *,
-          partner_application_categories (
-            category_id,
-            categories (id, name)
-          )
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+      const { data, error } = await api.applications.list();
+      if (error) throw new Error(error);
       return data;
     },
   });
@@ -72,81 +86,20 @@ export default function AdminApplications() {
   // Approve application mutation
   const approveMutation = useMutation({
     mutationFn: async (application: PartnerApplication) => {
-      // Update application status
-      const { error: updateError } = await supabase
-        .from('partner_applications')
-        .update({ 
-          status: 'approved',
-          moderated_at: new Date().toISOString()
-        })
-        .eq('id', application.id);
+      const { error } = await api.applications.approve(
+        application.id,
+        'admin'
+      );
       
-      if (updateError) throw updateError;
-
-      // Create partner profile
-      const { data: profile, error: profileError } = await supabase
-        .from('partner_profiles')
-        .insert({
-          user_id: application.user_id,
-          application_id: application.id,
-          name: application.name,
-          age: application.age,
-          profession: application.profession,
-          profession_descriptions: application.profession_descriptions,
-          city: application.city,
-          agency_name: application.agency_name,
-          agency_description: application.agency_description,
-          self_description: application.self_description,
-          phone: application.phone,
-          tg_channel: application.tg_channel,
-          website: application.website,
-          youtube: application.youtube,
-          rutube: application.rutube,
-          dzen: application.dzen,
-          vk_video: application.vk_video,
-          tg_video: application.tg_video,
-          office_address: application.office_address,
-          card_template_id: application.card_template_id,
-          status: 'active',
-          partner_type: 'free'
-        })
-        .select('id')
-        .single();
-      
-      if (profileError) throw profileError;
-
-      // Copy categories from application to profile
-      const { data: appCategories } = await supabase
-        .from('partner_application_categories')
-        .select('category_id')
-        .eq('application_id', application.id);
-
-      if (appCategories && appCategories.length > 0) {
-        const profileCategories = appCategories.map(cat => ({
-          profile_id: profile.id,
-          category_id: cat.category_id
-        }));
-
-        const { error: catError } = await supabase
-          .from('partner_profile_categories')
-          .insert(profileCategories);
-
-        if (catError) {
-          console.error('Error copying categories:', catError);
-        }
-      }
+      if (error) throw new Error(error);
 
       // Публикуем на канале
       try {
-        await supabase.functions.invoke('publish-partner-to-channel', {
-          body: { partner_profile_id: profile.id }
-        });
+        // TODO: Get partner ID from approve response and publish
+        // await api.telegram.publishPartner(partnerId);
       } catch (publishError) {
         console.error('Error publishing to channel:', publishError);
-        // Не прерываем процесс, просто логируем
       }
-
-      return profile.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
@@ -162,16 +115,13 @@ export default function AdminApplications() {
   // Reject application mutation
   const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const { error } = await supabase
-        .from('partner_applications')
-        .update({ 
-          status: 'rejected',
-          rejection_reason: reason,
-          moderated_at: new Date().toISOString()
-        })
-        .eq('id', id);
+      const { error } = await api.applications.reject(
+        id,
+        'admin', // TODO: Get current admin ID
+        reason
+      );
       
-      if (error) throw error;
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
@@ -184,22 +134,12 @@ export default function AdminApplications() {
     },
   });
 
-  // Delete application mutation
+  // Delete application - TODO: Add backend endpoint
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Сначала удаляем связанные категории
-      await supabase
-        .from('partner_application_categories')
-        .delete()
-        .eq('application_id', id);
-      
-      // Затем удаляем заявку
-      const { error } = await supabase
-        .from('partner_applications')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      // const { error } = await api.applications.delete(id);
+      // if (error) throw new Error(error);
+      throw new Error('Удаление заявок пока не реализовано');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
@@ -393,19 +333,17 @@ export default function AdminApplications() {
               )}
 
               {/* Категории */}
-              {viewingApplication.partner_application_categories && viewingApplication.partner_application_categories.length > 0 && (
+              {viewingApplication.categories && viewingApplication.categories.length > 0 && (
                 <div>
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <Tag className="h-4 w-4" />
                     Категории
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {viewingApplication.partner_application_categories.map((cat) => (
-                      cat.categories && (
-                        <Badge key={cat.category_id} variant="secondary">
-                          {cat.categories.name}
-                        </Badge>
-                      )
+                    {viewingApplication.categories.map((cat: any) => (
+                      <Badge key={cat.id} variant="secondary">
+                        {cat.name}
+                      </Badge>
                     ))}
                   </div>
                 </div>

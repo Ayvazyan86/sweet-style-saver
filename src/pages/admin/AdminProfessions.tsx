@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,9 +34,15 @@ import {
   GripVertical,
   Briefcase
 } from 'lucide-react';
-import type { Tables } from '@/integrations/supabase/types';
-
-type Profession = Tables<'professions'>;
+type Profession = {
+  id: string;
+  name: string;
+  name_en: string | null;
+  slug: string;
+  sort_order: number | null;
+  is_active: boolean | null;
+  created_at: string;
+};
 
 export default function AdminProfessions() {
   const queryClient = useQueryClient();
@@ -48,30 +54,20 @@ export default function AdminProfessions() {
   const { data: professions, isLoading } = useQuery({
     queryKey: ['admin-professions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('professions')
-        .select('*')
-        .order('sort_order', { ascending: true });
-      
-      if (error) throw error;
+      const { data, error } = await api.professions.list();
+      if (error) throw new Error(error);
       return data as Profession[];
     },
   });
 
   const addMutation = useMutation({
     mutationFn: async (profession: { name: string; name_en: string; slug: string }) => {
-      const maxSort = professions?.reduce((max, p) => Math.max(max, p.sort_order || 0), 0) || 0;
-      const { error } = await supabase
-        .from('professions')
-        .insert({
-          name: profession.name,
-          name_en: profession.name_en || null,
-          slug: profession.slug || profession.name.toLowerCase().replace(/\s+/g, '-'),
-          sort_order: maxSort + 1,
-          is_active: true
-        });
-      
-      if (error) throw error;
+      const { error } = await api.professions.create({
+        name: profession.name,
+        name_en: profession.name_en || null,
+        slug: profession.slug || profession.name.toLowerCase().replace(/\s+/g, '-'),
+      });
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
@@ -86,17 +82,13 @@ export default function AdminProfessions() {
 
   const editMutation = useMutation({
     mutationFn: async (profession: Partial<Profession> & { id: string }) => {
-      const { error } = await supabase
-        .from('professions')
-        .update({
-          name: profession.name,
-          name_en: profession.name_en,
-          slug: profession.slug,
-          is_active: profession.is_active
-        })
-        .eq('id', profession.id);
-      
-      if (error) throw error;
+      const { error } = await api.professions.update(profession.id, {
+        name: profession.name,
+        name_en: profession.name_en,
+        slug: profession.slug,
+        is_active: profession.is_active
+      });
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
@@ -110,12 +102,8 @@ export default function AdminProfessions() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('professions')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      const { error } = await api.professions.delete(id);
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-professions'] });
@@ -129,12 +117,8 @@ export default function AdminProfessions() {
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from('professions')
-        .update({ is_active })
-        .eq('id', id);
-      
-      if (error) throw error;
+      const { error } = await api.professions.update(id, { is_active });
+      if (error) throw new Error(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-professions'] });

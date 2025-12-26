@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,7 @@ export interface CardTemplate {
   name: string;
   image_url: string;
   is_default: boolean;
+  is_active?: boolean;
   text_x: number;
   text_y: number;
   text_color: string;
@@ -25,14 +26,11 @@ export function TemplateSelect({ value, onChange, error }: TemplateSelectProps) 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['active-card-templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('card_templates')
-        .select('id, name, image_url, is_default, text_x, text_y, text_color, font_size')
-        .eq('is_active', true)
-        .order('is_default', { ascending: false });
+      const { data, error } = await api.cardTemplates.list();
 
-      if (error) throw error;
-      return data as CardTemplate[];
+      if (error) throw new Error(error);
+      // Filter active templates on client side
+      return (data as CardTemplate[]).filter(t => t.is_active !== false);
     },
   });
 
